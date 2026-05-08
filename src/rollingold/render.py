@@ -38,7 +38,7 @@ def render_html(report: dict[str, Any]) -> str:
       margin: 0;
       background: var(--bg);
       color: var(--ink);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-family: "Avenir Next", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
       letter-spacing: 0;
     }}
     header {{
@@ -88,6 +88,7 @@ def render_html(report: dict[str, Any]) -> str:
     .switch button {{
       border: 0;
       padding: 9px 13px;
+      min-height: 44px;
       background: var(--surface);
       color: var(--muted);
       font-weight: 650;
@@ -168,6 +169,7 @@ def render_html(report: dict[str, Any]) -> str:
       grid-template-columns: 1fr auto;
       gap: 8px;
       padding: 8px 10px;
+      min-height: 44px;
       border-bottom: 1px solid var(--line);
       border-left: 0;
       border-right: 0;
@@ -182,7 +184,7 @@ def render_html(report: dict[str, Any]) -> str:
     }}
     .signal-item:last-child {{ border-bottom: 0; }}
     .signal-item:hover, .signal-item:focus-visible {{ background: #f8faf7; }}
-    .signal-item:focus-visible, .rank-item:focus-visible {{
+    button:focus-visible, .signal-item:focus-visible, .rank-item:focus-visible {{
       outline: 2px solid var(--green);
       outline-offset: -2px;
     }}
@@ -246,6 +248,10 @@ def render_html(report: dict[str, Any]) -> str:
       grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr);
       gap: 18px;
       align-items: start;
+    }}
+    .rotation-scroll {{
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }}
     #rotation-svg {{
       width: 100%;
@@ -327,6 +333,7 @@ def render_html(report: dict[str, Any]) -> str:
       grid-template-columns: 1fr auto;
       gap: 8px;
       padding: 9px 10px;
+      min-height: 44px;
       border-top: 1px solid var(--line);
       border-left: 0;
       border-right: 0;
@@ -352,8 +359,10 @@ def render_html(report: dict[str, Any]) -> str:
     }}
     .heatmap-wrap {{
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       border: 1px solid var(--line);
       border-radius: 8px;
+      box-shadow: inset -16px 0 18px -22px rgba(23, 32, 28, .65);
     }}
     .heatmap-actions {{
       display: flex;
@@ -367,6 +376,7 @@ def render_html(report: dict[str, Any]) -> str:
       background: #fbfcfa;
       color: var(--ink);
       padding: 6px 10px;
+      min-height: 44px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
@@ -450,7 +460,14 @@ def render_html(report: dict[str, Any]) -> str:
       .rankings {{ grid-template-columns: 1fr; }}
       h1 {{ font-size: 24px; }}
       .section-head {{ align-items: flex-start; flex-direction: column; }}
-      #rotation-svg {{ aspect-ratio: 1 / 1; }}
+      .rotation-scroll {{
+        margin-right: -2px;
+        padding-bottom: 4px;
+      }}
+      #rotation-svg {{
+        min-width: 640px;
+        aspect-ratio: 12 / 7;
+      }}
       table {{ min-width: 760px; }}
     }}
   </style>
@@ -492,7 +509,9 @@ def render_html(report: dict[str, Any]) -> str:
             <span>横轴相对强弱，纵轴相对动量</span>
           </div>
         </div>
-        <svg id="rotation-svg" viewBox="0 0 720 420" role="img" aria-label="行业四象限轮动图"></svg>
+        <div class="rotation-scroll" aria-label="行业四象限轮动图，窄屏可横向滑动查看">
+          <svg id="rotation-svg" viewBox="0 0 720 420" role="img" aria-label="行业四象限轮动图"></svg>
+        </div>
       </section>
       <section class="detail" id="detail-panel" aria-label="行业详情"></section>
     </div>
@@ -510,7 +529,7 @@ def render_html(report: dict[str, Any]) -> str:
       <div class="section-head">
         <h2>市场宽度热力图</h2>
         <div class="heatmap-actions">
-          <p class="hint" id="heatmap-hint">默认展示最近 10 个交易日，按当前 MA20 宽度排序；趋势列为同一窗口首尾变化，绿色上升、红色下降。</p>
+          <p class="hint" id="heatmap-hint">默认展示最近 10 个交易日，按当前 MA20 宽度排序；窄屏可横向滑动。</p>
           <button class="text-button" id="heatmap-toggle" type="button">显示全部时间</button>
         </div>
       </div>
@@ -643,6 +662,7 @@ def render_html(report: dict[str, Any]) -> str:
           const labelY = clamp(y + 4, 66, 354);
           return `<g class="industry-dot" data-name="${{item.name}}" data-focus-key="dot-${{item.rank}}" role="button" tabindex="0" aria-label="选择${{item.name}}" style="cursor:pointer">
             <title>${{item.name}}｜${{point.quadrant}}｜强弱 ${{fmt(point.x)}}｜动量 ${{fmt(point.y)}}｜评分 ${{fmt(item.score)}}</title>
+            <rect x="${{x - 22}}" y="${{y - 22}}" width="44" height="44" fill="transparent"></rect>
             <circle cx="${{x}}" cy="${{y}}" r="${{radius}}" fill="${{color}}" stroke="#fff" stroke-width="${{isSelected ? 2.4 : 1.5}}"></circle>
             <text class="dot-label ${{isSelected ? 'selected' : ''}}" x="${{labelX}}" y="${{labelY}}" fill="#17201c">${{item.name}}</text>
           </g>`;
@@ -793,8 +813,8 @@ def render_html(report: dict[str, Any]) -> str:
       document.getElementById('heatmap').innerHTML = `<table>${{header}}${{rows}}</table>`;
       document.getElementById('heatmap-toggle').textContent = heatmapExpanded ? '收起到近 10 日' : '显示全部时间';
       document.getElementById('heatmap-hint').textContent = heatmapExpanded
-        ? `已展示全部 ${{dates.length}} 个交易日，趋势列为全部窗口首尾变化；绿色上升、红色下降、灰色持平。`
-        : `默认展示最近 ${{dates.length}} 个交易日，按当前 MA20 宽度排序；趋势列为近 ${{dates.length}} 日首尾变化，绿色上升、红色下降、灰色持平。`;
+        ? `已展示全部 ${{dates.length}} 个交易日；窄屏可横向滑动。`
+        : `默认展示最近 ${{dates.length}} 个交易日；窄屏可横向滑动。`;
     }}
 
     function breadthState(item) {{
