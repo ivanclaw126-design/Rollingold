@@ -153,10 +153,22 @@ def divergence_notes(
 
 def trace_comment(industry: dict[str, object]) -> str:
     quadrant_value = str(industry["quadrant"])
-    score = industry["score"]
+    score = _format_metric(industry["score"])
     breadth = industry.get("breadth_ma20")
     delta = industry.get("breadth_delta_5d")
-    return f"{quadrant_value}象限，综合评分 {score}，MA20 宽度 {breadth if breadth is not None else '无数据'}，5 日变化 {delta if delta is not None else '无数据'}。"
+    return (
+        f"{quadrant_value}象限，综合评分 {score}，"
+        f"MA20 宽度 {_format_metric(breadth)}，5 日变化 {_format_metric(delta)}。"
+    )
+
+
+def _format_metric(value: object) -> str:
+    if value is None:
+        return "无数据"
+    numeric = float(value)
+    if not math.isfinite(numeric):
+        return "无数据"
+    return f"{numeric:.1f}"
 
 
 def _z_to_score(value: float) -> float:
