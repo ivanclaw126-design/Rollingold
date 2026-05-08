@@ -18,3 +18,17 @@ def test_offline_site_generation_contains_required_sections(tmp_path):
     assert "仅供研究参考，不构成投资建议" in html
     assert report["meta"]["latest_date"] >= "2026-05-06"
 
+
+def test_interactive_industry_items_are_keyboard_accessible(tmp_path):
+    report = build_report(offline_fixture="tests/fixtures")
+    output = tmp_path / "index.html"
+    write_html(output, report)
+    html = output.read_text(encoding="utf-8")
+
+    # Regression: ISSUE-001 — clickable industry items were not keyboard reachable.
+    # Found by /qa on 2026-05-08
+    # Report: .gstack/qa-reports/qa-report-local-file-2026-05-08.md
+    assert 'class="rank-item" data-name="${name}" type="button"' in html
+    assert 'class="signal-item" data-name="${item.name}" type="button"' in html
+    assert 'class="industry-dot" data-name="${item.name}" role="button" tabindex="0"' in html
+    assert "onIndustryKey(event, node.dataset.name)" in html

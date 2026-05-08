@@ -148,17 +148,29 @@
       background: #fbfcfa;
     }
     .signal-item {
+      width: 100%;
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 8px;
       padding: 8px 10px;
       border-bottom: 1px solid var(--line);
+      border-left: 0;
+      border-right: 0;
+      border-top: 0;
       font-size: 13px;
       cursor: pointer;
       min-width: 0;
+      color: inherit;
+      background: transparent;
+      font: inherit;
+      text-align: left;
     }
     .signal-item:last-child { border-bottom: 0; }
-    .signal-item:hover { background: #f8faf7; }
+    .signal-item:hover, .signal-item:focus-visible { background: #f8faf7; }
+    .signal-item:focus-visible, .rank-item:focus-visible {
+      outline: 2px solid var(--green);
+      outline-offset: -2px;
+    }
     .signal-item span:first-child {
       min-width: 0;
       overflow-wrap: anywhere;
@@ -295,20 +307,28 @@
       font-size: 13px;
     }
     .rank-item {
+      width: 100%;
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 8px;
       padding: 9px 10px;
       border-top: 1px solid var(--line);
+      border-left: 0;
+      border-right: 0;
+      border-bottom: 0;
       font-size: 13px;
       cursor: pointer;
       min-width: 0;
+      color: inherit;
+      background: transparent;
+      font: inherit;
+      text-align: left;
     }
     .rank-item span {
       min-width: 0;
       overflow-wrap: anywhere;
     }
-    .rank-item:hover {
+    .rank-item:hover, .rank-item:focus-visible {
       background: #f8faf7;
     }
     .score {
@@ -393,6 +413,12 @@
     }
     .dot-label.selected {
       font-size: 15px;
+      font-weight: 800;
+    }
+    .industry-dot:focus-visible .dot-label {
+      paint-order: stroke;
+      stroke: #fff;
+      stroke-width: 4px;
       font-weight: 800;
     }
     .axis-label {
@@ -510,6 +536,17 @@
       };
     }
 
+    function selectIndustry(name) {
+      selected = name;
+      renderAll();
+    }
+
+    function onIndustryKey(event, name) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      selectIndustry(name);
+    }
+
     function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
     function currentPoints() {
       return DATA.industries.map(item => ({ item, point: activePoint(item) }));
@@ -571,7 +608,7 @@
           const y = scaleY(point.y, limit);
           const labelX = clamp(x + 10, 78, 638);
           const labelY = clamp(y + 4, 66, 354);
-          return `<g class="industry-dot" data-name="${item.name}" style="cursor:pointer">
+          return `<g class="industry-dot" data-name="${item.name}" role="button" tabindex="0" aria-label="选择${item.name}" style="cursor:pointer">
             <title>${item.name}｜${point.quadrant}｜强弱 ${fmt(point.x)}｜动量 ${fmt(point.y)}｜评分 ${fmt(item.score)}</title>
             <circle cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="#fff" stroke-width="${isSelected ? 2.4 : 1.5}"></circle>
             <text class="dot-label ${isSelected ? 'selected' : ''}" x="${labelX}" y="${labelY}" fill="#17201c">${item.name}</text>
@@ -579,10 +616,8 @@
         }).join('')}
       `;
       svg.querySelectorAll('.industry-dot').forEach(node => {
-        node.addEventListener('click', () => {
-          selected = node.dataset.name;
-          renderAll();
-        });
+        node.addEventListener('click', () => selectIndustry(node.dataset.name));
+        node.addEventListener('keydown', event => onIndustryKey(event, node.dataset.name));
       });
     }
 
@@ -622,15 +657,12 @@
           <div class="rank-title">${title}</div>
           ${items.map(name => {
             const item = DATA.industries.find(entry => entry.name === name);
-            return `<div class="rank-item" data-name="${name}"><span>${name}</span><span class="score">${fmt(item?.score)}</span></div>`;
+            return `<button class="rank-item" data-name="${name}" type="button" aria-label="选择${name}"><span>${name}</span><span class="score">${fmt(item?.score)}</span></button>`;
           }).join('') || '<div class="rank-item"><span>暂无</span><span></span></div>'}
         </div>
       `).join('');
       document.querySelectorAll('.rank-item[data-name]').forEach(node => {
-        node.addEventListener('click', () => {
-          selected = node.dataset.name;
-          renderAll();
-        });
+        node.addEventListener('click', () => selectIndustry(node.dataset.name));
       });
     }
 
@@ -687,17 +719,14 @@
           <div class="signal-title ${tone}">${title}</div>
           <div class="signal-rule">${rule}</div>
           ${items.slice(0, 5).map(item => `
-            <div class="signal-item" data-name="${item.name}">
+            <button class="signal-item" data-name="${item.name}" type="button" aria-label="选择${item.name}">
               <span>${item.name}</span><span>${meta(item)}</span>
-            </div>
+            </button>
           `).join('') || '<div class="signal-item"><span>暂无</span><span></span></div>'}
         </div>
       `).join('');
       document.querySelectorAll('.signal-item[data-name]').forEach(node => {
-        node.addEventListener('click', () => {
-          selected = node.dataset.name;
-          renderAll();
-        });
+        node.addEventListener('click', () => selectIndustry(node.dataset.name));
       });
     }
 
