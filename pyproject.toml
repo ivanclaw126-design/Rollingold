@@ -1,0 +1,31 @@
+[project]
+name = "rollingold"
+version = "0.1.0"
+description = "Industry rotation static report for after-market research."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "akshare>=1.18.55",
+  "pandas>=2.0",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+rollingold-breadth = "rollingold.breadth:main"
+rollingold-site = "rollingold.site:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

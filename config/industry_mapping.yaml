@@ -1,0 +1,121 @@
+benchmark:
+  name: 申万A指
+  code: "801003"
+
+industries:
+  - name: 农林牧渔
+    breadth_sources: [农牧饲渔]
+    price_sources:
+      - {name: 农林牧渔, code: "801010"}
+  - name: 化工
+    aliases: [基础化工]
+    breadth_sources: [农药兽药, 化学制品, 化学原料, 化纤行业, 化肥行业, 塑料制品, 橡胶制品, 电子化学品, 非金属材料]
+    price_sources:
+      - {name: 基础化工, code: "801030"}
+  - name: 钢铁
+    breadth_sources: [钢铁行业]
+    price_sources:
+      - {name: 钢铁, code: "801040"}
+  - name: 有色金属
+    breadth_sources: [有色金属, 小金属, 能源金属, 贵金属]
+    price_sources:
+      - {name: 有色金属, code: "801050"}
+  - name: 电子
+    breadth_sources: [半导体, 消费电子, 光学光电子, 电子元件]
+    price_sources:
+      - {name: 电子, code: "801080"}
+  - name: 汽车
+    breadth_sources: [汽车整车, 汽车服务, 汽车零部件]
+    price_sources:
+      - {name: 汽车, code: "801880"}
+  - name: 食品饮料
+    breadth_sources: [酿酒行业, 食品饮料]
+    price_sources:
+      - {name: 食品饮料, code: "801120"}
+  - name: 纺织服装
+    breadth_sources: [纺织服装]
+    price_sources:
+      - {name: 纺织服饰, code: "801130"}
+  - name: 轻工制造
+    breadth_sources: [包装材料, 家用轻工, 家电行业, 造纸印刷]
+    price_sources:
+      - {name: 轻工制造, code: "801140"}
+      - {name: 家用电器, code: "801110"}
+  - name: 医药
+    aliases: [医药生物]
+    breadth_sources: [中药, 化学制药, 医疗器械, 医疗服务, 医药商业, 生物制品]
+    price_sources:
+      - {name: 医药生物, code: "801150"}
+  - name: 公用事业
+    breadth_sources: [公用事业, 燃气, 环保行业]
+    price_sources:
+      - {name: 公用事业, code: "801160"}
+      - {name: 环保, code: "801970"}
+  - name: 交通运输
+    breadth_sources: [交运设备, 物流行业, 航空机场, 航运港口, 铁路公路]
+    price_sources:
+      - {name: 交通运输, code: "801170"}
+  - name: 房地产
+    breadth_sources: [房地产开发, 房地产服务]
+    price_sources:
+      - {name: 房地产, code: "801180"}
+  - name: 商贸零售
+    breadth_sources: [商业百货, 旅游酒店, 珠宝首饰, 美容护理, 贸易行业]
+    price_sources:
+      - {name: 商贸零售, code: "801200"}
+      - {name: 社会服务, code: "801210"}
+      - {name: 美容护理, code: "801980"}
+  - name: 银行
+    breadth_sources: [银行]
+    price_sources:
+      - {name: 银行, code: "801780"}
+  - name: 金融
+    aliases: [非银金融]
+    breadth_sources: [证券, 保险, 多元金融]
+    price_sources:
+      - {name: 非银金融, code: "801790"}
+  - name: 综合
+    breadth_sources: [专业服务, 综合行业, 教育]
+    price_sources:
+      - {name: 综合, code: "801230"}
+  - name: 建筑
+    breadth_sources: [工程咨询服务, 工程建设, 水泥建材, 玻璃玻纤, 装修建材, 装修装饰]
+    price_sources:
+      - {name: 建筑材料, code: "801710"}
+      - {name: 建筑装饰, code: "801720"}
+  - name: 电力
+    aliases: [电力设备]
+    breadth_sources: [光伏设备, 电池, 电源设备, 电网设备, 风电设备, 电力行业]
+    price_sources:
+      - {name: 电力设备, code: "801730"}
+  - name: 机械
+    aliases: [机械设备]
+    breadth_sources: [专用设备, 仪器仪表, 工程机械, 电机, 通用设备]
+    price_sources:
+      - {name: 机械设备, code: "801890"}
+  - name: 国防军工
+    breadth_sources: [航天航空, 船舶制造]
+    price_sources:
+      - {name: 国防军工, code: "801740"}
+  - name: 计算机
+    breadth_sources: [互联网服务, 计算机设备, 软件开发]
+    price_sources:
+      - {name: 计算机, code: "801750"}
+  - name: 传媒
+    breadth_sources: [文化传媒, 游戏]
+    price_sources:
+      - {name: 传媒, code: "801760"}
+  - name: 通信
+    breadth_sources: [通信设备, 通信服务]
+    price_sources:
+      - {name: 通信, code: "801770"}
+  - name: 煤炭
+    breadth_sources: [煤炭行业, 采掘行业]
+    price_sources:
+      - {name: 煤炭, code: "801950"}
+  - name: 石油
+    aliases: [石油石化]
+    breadth_sources: [石油行业]
+    price_sources:
+      - {name: 石油石化, code: "801960"}
+
