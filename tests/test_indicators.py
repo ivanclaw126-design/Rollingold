@@ -1,6 +1,13 @@
 import pandas as pd
 
-from rollingold.indicators import divergence_notes, quadrant, rotation_snapshot, score_industry, status_label
+from rollingold.indicators import (
+    divergence_notes,
+    quadrant,
+    rotation_snapshot,
+    score_industry,
+    status_label,
+    trace_comment,
+)
 
 
 def test_quadrant_mapping():
@@ -51,3 +58,16 @@ def test_score_status_and_divergence_rules():
         amount_confirm=True,
     )
 
+
+def test_trace_comment_formats_float_metrics_to_one_decimal():
+    assert (
+        trace_comment(
+            {
+                "quadrant": "走强",
+                "score": 51.1,
+                "breadth_ma20": 79.8,
+                "breadth_delta_5d": 39.099999999999994,
+            }
+        )
+        == "走强象限，综合评分 51.1，MA20 宽度 79.8，5 日变化 39.1。"
+    )

@@ -12,6 +12,10 @@ def test_offline_site_generation_contains_required_sections(tmp_path):
     assert len(report["industries"]) == 26
     assert output.stat().st_size > 20_000
     assert "价格相对轮动" in html
+    assert "横轴：相对强弱" in html
+    assert "纵轴：相对动量" in html
+    assert "圆圈大小：成交额占比" in html
+    assert "选中或悬停时会临时放大" in html
     assert "市场宽度" in html
     assert "综合评分" in html
     assert "行业详情" in html
