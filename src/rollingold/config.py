@@ -20,10 +20,20 @@ class PriceSource:
 
 
 @dataclass(frozen=True)
+class EtfRule:
+    include_any: tuple[str, ...]
+    fallback_code: str
+    fallback_name: str
+    match_note: str
+    exclude_any: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class IndustryConfig:
     name: str
     breadth_sources: tuple[str, ...]
     price_sources: tuple[PriceSource, ...]
+    etf_rule: EtfRule = EtfRule((), "", "", "")
     aliases: tuple[str, ...] = ()
 
 
@@ -63,6 +73,7 @@ def load_config(path: str | Path = DEFAULT_CONFIG_PATH) -> AppConfig:
 
 
 def _parse_industry(raw: dict[str, Any]) -> IndustryConfig:
+    etf = raw.get("etf", {})
     return IndustryConfig(
         name=str(raw["name"]),
         aliases=tuple(str(item) for item in raw.get("aliases", ())),
@@ -71,5 +82,11 @@ def _parse_industry(raw: dict[str, Any]) -> IndustryConfig:
             PriceSource(name=str(item["name"]), code=str(item["code"]))
             for item in raw.get("price_sources", ())
         ),
+        etf_rule=EtfRule(
+            include_any=tuple(str(item) for item in etf.get("include_any", ())),
+            exclude_any=tuple(str(item) for item in etf.get("exclude_any", ())),
+            fallback_code=str(etf.get("fallback_code", "")),
+            fallback_name=str(etf.get("fallback_name", "")),
+            match_note=str(etf.get("match_note", "")),
+        ),
     )
-

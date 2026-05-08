@@ -13,7 +13,14 @@ import pandas as pd
 
 from .breadth import aggregate_breadth, fetch_and_aggregate, load_raw_payload
 from .config import DEFAULT_CONFIG_PATH, PROJECT_ROOT, AppConfig, IndustryConfig, load_config
-from .data_sources import amount_series, close_series, equal_weight_series, load_sw_history
+from .data_sources import (
+    amount_series,
+    close_series,
+    equal_weight_series,
+    load_etf_history,
+    load_etf_spot,
+    load_sw_history,
+)
 from .indicators import (
     divergence_notes,
     rotation_snapshot,
@@ -140,18 +147,28 @@ def build_report(
         item["rank"] = rank
 
     latest_price_date = max(str(path[-1]["date"]) for path in (item["path_daily"] for item in industries) if path)
+    etfs = _build_etf_section(
+        app_config,
+        page_closes_day,
+        cache_dir=cache_dir,
+        offline_fixture=offline_fixture,
+        refresh_cache=refresh_cache,
+    )
+    latest_etf_date = str(etfs.get("meta", {}).get("latest_date") or "")
     report = {
         "meta": {
             "generated_at": datetime.now().isoformat(timespec="seconds"),
-            "latest_date": max(str(breadth["latest_date"]), latest_price_date),
+            "latest_date": max(str(breadth["latest_date"]), latest_price_date, latest_etf_date),
             "price_latest_date": latest_price_date,
             "breadth_latest_date": breadth["latest_date"],
+            "etf_latest_date": latest_etf_date,
             "benchmark": {"name": app_config.benchmark_name, "code": app_config.benchmark_code},
             "data_quality": breadth.get("quality", {}).get("message", "数据已生成"),
         },
         "industries": industries,
         "rankings": _rankings(industries),
         "breadth": breadth,
+        "etfs": etfs,
         "methodology": {
             "score_weights": {
                 "price_relative_strength": 0.30,
@@ -212,6 +229,184 @@ def _load_histories(
             refresh=refresh_cache,
         )
     return histories
+
+
+def _build_etf_section(
+    app_config: AppConfig,
+    page_closes_day: dict[str, pd.Series],
+    *,
+    cache_dir: str | Path,
+    offline_fixture: str | Path | None,
+    refresh_cache: bool,
+) -> dict[str, Any]:
+    spot = load_etf_spot(cache_dir=cache_dir, offline_fixture=offline_fixture, refresh=refresh_cache)
+    items: list[dict[str, Any]] = []
+    for industry in app_config.industries:
+        selected = _select_etf(spot, industry)
+        history = load_etf_history(
+            selected["code"],
+            cache_dir=cache_dir,
+            offline_fixture=offline_fixture,
+            refresh=refresh_cache,
+        )
+        etf_close = close_series(history)
+        consistency = _etf_consistency(etf_close, page_closes_day[industry.name])
+        points = _etf_points(etf_close)
+        latest_point = points[-1] if points else {}
+        item = {
+            "industry": industry.name,
+            "code": selected["code"],
+            "name": selected["name"],
+            "match_note": industry.etf_rule.match_note,
+            "match_source": selected["source"],
+            "candidates": selected["candidates"],
+            "market_value_yuan": selected["market_value_yuan"],
+            "market_value_100m": _round_or_none(
+                selected["market_value_yuan"] / 100_000_000 if selected["market_value_yuan"] is not None else None,
+                2,
+            ),
+            "latest_price": selected["latest_price"],
+            "latest_return_pct": consistency["etf_latest_return_pct"],
+            "industry_latest_return_pct": consistency["industry_latest_return_pct"],
+            "consistency": consistency["label"],
+            "correlation": consistency["correlation"],
+            "direction_match_pct": consistency["direction_match_pct"],
+            "latest_date": latest_point.get("date"),
+            "points": points,
+        }
+        items.append(item)
+    latest_dates = [str(item["latest_date"]) for item in items if item.get("latest_date")]
+    return {
+        "meta": {
+            "latest_date": max(latest_dates) if latest_dates else "",
+            "spot_date": _spot_date(spot),
+            "source": "AKShare fund_etf_spot_em / fund_etf_hist_em",
+            "consistency_window": "最近 120 个共同交易日",
+        },
+        "items": items,
+    }
+
+
+def _select_etf(spot: pd.DataFrame, industry: IndustryConfig) -> dict[str, Any]:
+    rule = industry.etf_rule
+    fallback = {
+        "code": rule.fallback_code,
+        "name": rule.fallback_name,
+        "source": "fallback",
+        "market_value_yuan": None,
+        "latest_price": None,
+        "candidates": 0,
+    }
+    if spot.empty or "名称" not in spot.columns or "代码" not in spot.columns:
+        return fallback
+
+    frame = spot.copy()
+    frame["代码"] = frame["代码"].map(_code_str)
+    frame["名称"] = frame["名称"].astype(str)
+    frame["总市值_num"] = pd.to_numeric(frame.get("总市值"), errors="coerce")
+    frame["最新价_num"] = pd.to_numeric(frame.get("最新价"), errors="coerce")
+
+    mask = pd.Series(False, index=frame.index)
+    for term in rule.include_any:
+        mask = mask | frame["名称"].str.contains(term, regex=False, na=False)
+    for term in rule.exclude_any:
+        mask = mask & ~frame["名称"].str.contains(term, regex=False, na=False)
+    candidates = frame[mask].sort_values("总市值_num", ascending=False)
+
+    if candidates.empty and rule.fallback_code:
+        candidates = frame[frame["代码"] == rule.fallback_code].copy()
+
+    if candidates.empty:
+        return fallback
+
+    row = candidates.iloc[0]
+    market_value = _float_or_none(row.get("总市值_num"))
+    latest_price = _float_or_none(row.get("最新价_num"))
+    return {
+        "code": _code_str(row.get("代码")),
+        "name": str(row.get("名称") or rule.fallback_name),
+        "source": "live",
+        "market_value_yuan": market_value,
+        "latest_price": latest_price,
+        "candidates": int(len(candidates)),
+    }
+
+
+def _etf_consistency(etf_close: pd.Series, industry_close: pd.Series) -> dict[str, Any]:
+    frame = pd.concat(
+        [etf_close.rename("etf"), industry_close.rename("industry")],
+        axis=1,
+        join="inner",
+    ).dropna()
+    returns = frame.pct_change().replace([float("inf"), float("-inf")], pd.NA).dropna().tail(120)
+    if returns.empty:
+        return {
+            "label": "数据不足",
+            "correlation": None,
+            "direction_match_pct": None,
+            "etf_latest_return_pct": None,
+            "industry_latest_return_pct": None,
+        }
+
+    correlation = _float_or_none(returns["etf"].corr(returns["industry"]))
+    direction_match = float(((returns["etf"] >= 0) == (returns["industry"] >= 0)).mean() * 100)
+    if correlation is not None and correlation >= 0.72 and direction_match >= 62:
+        label = "一致"
+    elif correlation is not None and correlation >= 0.50 and direction_match >= 55:
+        label = "部分一致"
+    else:
+        label = "偏离"
+
+    return {
+        "label": label,
+        "correlation": _round_or_none(correlation, 2),
+        "direction_match_pct": _round_or_none(direction_match, 1),
+        "etf_latest_return_pct": _round_or_none(float(returns["etf"].iloc[-1] * 100), 2),
+        "industry_latest_return_pct": _round_or_none(float(returns["industry"].iloc[-1] * 100), 2),
+    }
+
+
+def _etf_points(close: pd.Series, limit: int = 240) -> list[dict[str, Any]]:
+    series = close.sort_index().dropna().tail(limit)
+    returns = series.pct_change() * 100
+    points: list[dict[str, Any]] = []
+    for date_value, close_value in series.items():
+        daily_return = returns.loc[date_value]
+        points.append(
+            {
+                "date": str(date_value.date() if hasattr(date_value, "date") else date_value),
+                "close": round(float(close_value), 4),
+                "return": _round_or_none(_float_or_none(daily_return), 2),
+            }
+        )
+    return points
+
+
+def _spot_date(spot: pd.DataFrame) -> str:
+    if spot.empty or "数据日期" not in spot.columns:
+        return ""
+    values = [str(item)[:10] for item in spot["数据日期"].dropna().tolist()]
+    return max(values) if values else ""
+
+
+def _float_or_none(value: Any) -> float | None:
+    try:
+        if pd.isna(value):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _round_or_none(value: float | None, digits: int) -> float | None:
+    return None if value is None else round(float(value), digits)
+
+
+def _code_str(value: Any) -> str:
+    text = str(value).strip()
+    if text.endswith(".0"):
+        text = text[:-2]
+    return text.zfill(6)
 
 
 def _sum_series(series: list[pd.Series]) -> pd.Series:

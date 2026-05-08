@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -42,6 +43,66 @@ def load_realtime_amounts(offline_fixture: str | Path | None = None) -> dict[str
     for _, row in df.iterrows():
         amounts[str(row["指数代码"])] = float(row["成交额"])
     return amounts
+
+
+def load_etf_spot(
+    *,
+    cache_dir: str | Path = "data/cache",
+    offline_fixture: str | Path | None = None,
+    refresh: bool = False,
+) -> pd.DataFrame:
+    if offline_fixture:
+        fixture = Path(offline_fixture) / "etf_spot.csv"
+        return pd.read_csv(fixture) if fixture.exists() else pd.DataFrame()
+
+    cache_path = Path(cache_dir) / "etf_spot.csv"
+    if cache_path.exists() and not refresh:
+        return pd.read_csv(cache_path)
+
+    import akshare as ak
+
+    df = ak.fund_etf_spot_em()
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(cache_path, index=False)
+    return df
+
+
+def load_etf_history(
+    code: str,
+    *,
+    cache_dir: str | Path = "data/cache",
+    offline_fixture: str | Path | None = None,
+    refresh: bool = False,
+    start_date: str | None = None,
+    end_date: str = "20500101",
+    adjust: str = "qfq",
+) -> pd.DataFrame:
+    if offline_fixture:
+        fixture = Path(offline_fixture) / f"etf_hist_{code}_daily.csv"
+        if fixture.exists():
+            return normalize_history(pd.read_csv(fixture))
+        return _load_fixture_history(code, "day", Path(offline_fixture))
+
+    if start_date is None:
+        start_date = (date.today() - timedelta(days=820)).strftime("%Y%m%d")
+    adjust_key = adjust or "raw"
+    cache_path = Path(cache_dir) / f"etf_hist_{code}_daily_{adjust_key}.csv"
+    if cache_path.exists() and not refresh:
+        return normalize_history(pd.read_csv(cache_path))
+
+    import akshare as ak
+
+    df = ak.fund_etf_hist_em(
+        symbol=code,
+        period="daily",
+        start_date=start_date,
+        end_date=end_date,
+        adjust=adjust,
+    )
+    normalized = normalize_history(df)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    normalized.to_csv(cache_path, index=False)
+    return normalized
 
 
 def normalize_history(df: pd.DataFrame) -> pd.DataFrame:
