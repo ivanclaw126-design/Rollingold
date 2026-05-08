@@ -7,27 +7,17 @@ EXTRA_CSS = """
       gap: 8px;
       align-items: center;
     }
-    .change-list, .quality-grid, .strategy-grid {
+    .quality-grid, .strategy-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 10px;
     }
-    .change-item, .quality-item, .strategy-item {
+    .quality-item, .strategy-item {
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #fbfcfa;
       padding: 10px;
       min-width: 0;
-    }
-    .change-item button {
-      border: 0;
-      background: transparent;
-      color: var(--ink);
-      cursor: pointer;
-      font: inherit;
-      padding: 0;
-      text-align: left;
-      font-weight: 780;
     }
     .breakdown-list {
       display: grid;

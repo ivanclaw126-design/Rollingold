@@ -588,27 +588,17 @@
       gap: 8px;
       align-items: center;
     }
-    .change-list, .quality-grid, .strategy-grid {
+    .quality-grid, .strategy-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 10px;
     }
-    .change-item, .quality-item, .strategy-item {
+    .quality-item, .strategy-item {
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #fbfcfa;
       padding: 10px;
       min-width: 0;
-    }
-    .change-item button {
-      border: 0;
-      background: transparent;
-      color: var(--ink);
-      cursor: pointer;
-      font: inherit;
-      padding: 0;
-      text-align: left;
-      font-weight: 780;
     }
     .breakdown-list {
       display: grid;
@@ -738,23 +728,15 @@
       <p class="method-note">口径：价格相对轮动使用行业相对申万 A 指的强弱 z-score 和动量 z-score；MA20 宽度为行业内成分站上 20 日均线比例，1 日 / 5 日变化均为百分点变化。</p>
     </section>
 
-    <section>
-      <div class="section-head">
-        <h2>今日变化</h2>
-        <p class="hint">展示阶段迁移、分数变化和主要触发原因。</p>
-      </div>
-      <div class="change-list" id="change-log"></div>
-    </section>
-
     <div class="grid">
       <section>
         <div class="section-head">
           <h2>价格相对轮动图</h2>
           <div class="chart-meta">
-            <span id="history-label">最近 20 个交易日</span>
+            <span id="history-label">最近 60 个交易日</span>
             <div class="trace-switch" aria-label="轨迹范围切换">
-              <button class="active" data-trace-mode="20" type="button">20日</button>
-              <button data-trace-mode="60" type="button">60日</button>
+              <button data-trace-mode="20" type="button">20日</button>
+              <button class="active" data-trace-mode="60" type="button">60日</button>
               <button data-trace-mode="latest" type="button">仅点位</button>
             </div>
             <span>横轴看相对位置，纵轴看变化速度</span>
@@ -763,7 +745,7 @@
         <div class="rotation-explain" aria-label="轮动图图例说明">
           <p><span>横轴：相对强弱</span>越靠右，行业相对申万 A 指越强；越靠左，表示相对跑输。</p>
           <p><span>纵轴：相对动量</span>越靠上，相对强弱改善越快；越靠下，表示相对动能转弱。</p>
-          <p><span>圆圈大小：成交额占比</span>圆圈越大，行业成交额占全部页面行业成交额的比例越高；选中或悬停时会临时放大。</p>
+          <p><span>轨迹方向</span>线段越深越接近当前，末端圆点是最新位置；成交占比只作为圆点大小的辅助提示。</p>
         </div>
         <div class="rotation-scroll" aria-label="行业四象限轮动图，窄屏可横向滑动查看">
           <svg id="rotation-svg" viewBox="0 0 720 420" role="img" aria-label="行业四象限轮动图"></svg>
@@ -889,7 +871,7 @@
     let selectedEtf = storedState.etf || DATA.etfs?.items?.[0]?.code;
     let etfWindow = Number(storedState.etfWindow || 20);
     let hovered = null;
-    let traceMode = initialParams.get('trace') || storedState.trace || '20';
+    let traceMode = initialParams.get('trace') || storedState.trace || '60';
     let heatmapSort = initialParams.get('sort') || storedState.sort || 'breadth';
     let heatmapWindow = initialParams.get('heatmap') || storedState.heatmap || '10';
 
@@ -966,12 +948,16 @@
     function currentPoints() {
       return DATA.industries.map(item => ({ item, point: activePoint(item) }));
     }
-    function chartLimit(points, selectedPoint) {
+    function chartLimit(points) {
       const values = [];
       points.forEach(entry => values.push(Math.abs(entry.point.x), Math.abs(entry.point.y)));
-      (selectedPoint.path || []).forEach(point => values.push(Math.abs(point.x), Math.abs(point.y)));
+      if (traceMode !== 'latest') {
+        DATA.industries.forEach(item => {
+          displayPath(activePoint(item).path).forEach(point => values.push(Math.abs(point.x), Math.abs(point.y)));
+        });
+      }
       const raw = Math.max(1.2, ...values.filter(Number.isFinite));
-      return Math.min(3.4, Math.ceil((raw + 0.25) * 10) / 10);
+      return Math.max(4, Math.ceil((raw + 0.2) * 2) / 2);
     }
     function scaleX(x, limit) { return 360 + clamp(x, -limit, limit) * (292 / limit); }
     function scaleY(y, limit) { return 210 - clamp(y, -limit, limit) * (152 / limit); }
@@ -1026,21 +1012,53 @@
         return `<line x1="${scaleX(previous.x, limit)}" y1="${scaleY(previous.y, limit)}" x2="${scaleX(point.x, limit)}" y2="${scaleY(point.y, limit)}" stroke="${mixColor(startColor, endColor, ratio)}" stroke-width="${width.toFixed(2)}" opacity="${opacity.toFixed(2)}" stroke-linecap="round"${dash}></line>`;
       }).join('');
     }
+    function arrowHead(points, limit, color, options = {}) {
+      if (!points || points.length < 2) return '';
+      const last = points[points.length - 1];
+      const previous = points[points.length - 2];
+      const x = scaleX(last.x, limit);
+      const y = scaleY(last.y, limit);
+      const prevX = scaleX(previous.x, limit);
+      const prevY = scaleY(previous.y, limit);
+      const angle = Math.atan2(y - prevY, x - prevX);
+      const size = options.size || 5.5;
+      const spread = .72;
+      const p1 = `${x.toFixed(1)},${y.toFixed(1)}`;
+      const p2 = `${(x - Math.cos(angle - spread) * size).toFixed(1)},${(y - Math.sin(angle - spread) * size).toFixed(1)}`;
+      const p3 = `${(x - Math.cos(angle + spread) * size).toFixed(1)},${(y - Math.sin(angle + spread) * size).toFixed(1)}`;
+      return `<polygon points="${p1} ${p2} ${p3}" fill="${color}" opacity="${options.opacity ?? .58}"></polygon>`;
+    }
+    function labelNames() {
+      const names = new Set();
+      [
+        ...(DATA.rankings?.top_strength || []).slice(0, 5),
+        ...(DATA.rankings?.weak_repair || []).slice(0, 2),
+        ...(DATA.rankings?.slowing || []).slice(0, 2),
+        ...(DATA.rankings?.deteriorating || []).slice(0, 2)
+      ].forEach(name => names.add(name));
+      if (selected) names.add(selected);
+      if (hovered) names.add(hovered);
+      return names;
+    }
     function renderRotation() {
       const svg = document.getElementById('rotation-svg');
-      const selectedItem = DATA.industries.find(item => item.name === selected) || DATA.industries[0];
       const focusName = hovered || selected;
-      const focusItem = DATA.industries.find(item => item.name === focusName) || selectedItem;
-      const focusPoint = activePoint(focusItem);
       const points = currentPoints();
-      const limit = chartLimit(points, focusPoint);
+      const limit = chartLimit(points);
       const ticks = [-limit, -limit / 2, 0, limit / 2, limit];
       const labels = [
         ['走强', 214, 134], ['领涨', 506, 134], ['领跌', 214, 286], ['走弱', 506, 286]
       ];
-      const focusPathPoints = displayPath(focusPoint.path);
-      const focusStart = focusPathPoints[0];
-      const focusEnd = focusPathPoints[focusPathPoints.length - 1];
+      const visibleLabels = labelNames();
+      const pathEntries = DATA.industries.map(item => {
+        const point = activePoint(item);
+        const path = displayPath(point.path);
+        const isFocused = item.name === focusName;
+        const isSelected = item.name === selected;
+        return { item, point, path, isFocused, isSelected };
+      }).filter(entry => entry.path.length >= 2);
+      const quietPaths = pathEntries.filter(entry => !entry.isFocused && !entry.isSelected);
+      const focusPaths = pathEntries.filter(entry => entry.isFocused || entry.isSelected);
       svg.innerHTML = `
         <rect x="0" y="0" width="720" height="420" fill="#fbfcfa"></rect>
         <rect x="68" y="58" width="292" height="152" fill="#f2f7f3" opacity=".72"></rect>
@@ -1056,25 +1074,33 @@
         <text class="axis-label" x="608" y="402">相对强弱</text>
         <text class="axis-label" x="76" y="42">相对动量</text>
         ${labels.map(([text,x,y]) => `<text x="${x}" y="${y}" fill="#66716d" font-size="34" font-weight="850" opacity=".34" text-anchor="middle" dominant-baseline="middle">${text}</text>`).join('')}
-        ${lineSegments(focusPathPoints, limit, { startColor: '#a9beb6', endColor: '#143b31', opacityStart: .42, opacityEnd: .80, widthStart: 1.55, widthEnd: 2.9 })}
-        ${focusStart ? `<circle cx="${scaleX(focusStart.x, limit)}" cy="${scaleY(focusStart.y, limit)}" r="4" fill="#fff" stroke="#143b31" stroke-width="1.6" opacity=".82"></circle>` : ''}
-        ${focusEnd ? `<circle cx="${scaleX(focusEnd.x, limit)}" cy="${scaleY(focusEnd.y, limit)}" r="7.5" fill="none" stroke="#143b31" stroke-width="2.2"></circle>` : ''}
+        ${quietPaths.map(entry => {
+          const color = colorMap[entry.point.quadrant] || '#66716d';
+          return lineSegments(entry.path, limit, { startColor: '#dde6e1', endColor: color, opacityStart: .08, opacityEnd: hovered ? .18 : .34, widthStart: .9, widthEnd: 1.45 }) +
+            arrowHead(entry.path, limit, color, { size: 4.6, opacity: hovered ? .14 : .30 });
+        }).join('')}
+        ${focusPaths.map(entry => {
+          const color = colorMap[entry.point.quadrant] || '#66716d';
+          return lineSegments(entry.path, limit, { startColor: '#b5c5bd', endColor: color, opacityStart: .44, opacityEnd: .92, widthStart: 1.55, widthEnd: 3.05 }) +
+            arrowHead(entry.path, limit, color, { size: 7.2, opacity: .92 });
+        }).join('')}
         ${points.map(({ item, point }) => {
           const color = colorMap[point.quadrant] || '#66716d';
           const isSelected = item.name === selected;
           const isFocused = item.name === focusName;
           const heat = Math.max(0, Math.min(1, (item.amount_share || 0) * 16));
-          const radius = isSelected ? 9 : (isFocused ? 8 : 5 + heat * 4);
+          const radius = isSelected ? 7.4 : (isFocused ? 7 : 3.6 + heat * 2.2);
           const opacity = Math.max(.42, Math.min(1, item.confidence || .75));
           const x = scaleX(point.x, limit);
           const y = scaleY(point.y, limit);
           const labelX = clamp(x + 10, 78, 638);
           const labelY = clamp(y + 4, 66, 354);
+          const showLabel = visibleLabels.has(item.name);
           return `<g class="industry-dot" data-name="${item.name}" data-focus-key="dot-${item.rank}" role="button" tabindex="0" aria-label="选择${item.name}" style="cursor:pointer">
             <title>${item.name}｜${item.phase}｜强弱 ${fmt(point.x)}｜动量 ${fmt(point.y)}｜评分 ${fmt(item.score)}｜宽度 ${fmt(item.breadth_ma20)}｜成交 ${fmt((item.amount_share || 0) * 100)}%｜风险 ${signedPct((item.risk?.vol_20 || 0) * 100)}</title>
             <rect x="${x - 22}" y="${y - 22}" width="44" height="44" fill="transparent"></rect>
             <circle cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="${isFocused ? '#17201c' : '#fff'}" stroke-width="${isSelected || isFocused ? 2.4 : 1.5}" opacity="${hovered && !isFocused ? .46 : opacity}"></circle>
-            <text class="dot-label ${isSelected ? 'selected' : ''}" x="${labelX}" y="${labelY}" fill="#17201c">${item.name}</text>
+            ${showLabel ? `<text class="dot-label ${isSelected || isFocused ? 'selected' : ''}" x="${labelX}" y="${labelY}" fill="#17201c" opacity="${isSelected || isFocused ? 1 : .82}">${item.name}</text>` : ''}
           </g>`;
         }).join('')}
       `;
@@ -1229,17 +1255,6 @@
       document.querySelectorAll('.signal-item[data-name]').forEach(node => {
         bindIndustryControl(node);
       });
-    }
-
-    function renderChangeLog() {
-      const changes = DATA.change_log || [];
-      document.getElementById('change-log').innerHTML = changes.slice(0, 8).map((change, index) => `
-        <div class="change-item">
-          <button type="button" data-name="${change.industry}" data-focus-key="change-${index}">${change.industry}：${change.from || '-'} → ${change.to || '-'}</button>
-          <p class="muted-block">分数变化 ${signed(change.score_delta)}；${(change.reason || []).join('、')}</p>
-        </div>
-      `).join('') || '<div class="change-item">暂无显著变化</div>';
-      document.querySelectorAll('.change-item button[data-name]').forEach(node => bindIndustryControl(node));
     }
 
     function renderQuality() {
@@ -1647,7 +1662,6 @@
       document.getElementById('history-label').textContent = traceLabel();
       renderMarketInsights();
       renderSignalGroups();
-      renderChangeLog();
       renderRotation();
       renderDetail();
       renderRankings();
@@ -1698,7 +1712,7 @@
       activeTab = 'rotation';
       mode = 'daily';
       selected = DATA.industries[0]?.name;
-      traceMode = '20';
+      traceMode = '60';
       heatmapSort = 'breadth';
       heatmapWindow = '10';
       saveState();

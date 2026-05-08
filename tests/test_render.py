@@ -14,14 +14,14 @@ def test_offline_site_generation_contains_required_sections(tmp_path):
     assert "价格相对轮动" in html
     assert "横轴：相对强弱" in html
     assert "纵轴：相对动量" in html
-    assert "圆圈大小：成交额占比" in html
-    assert "选中或悬停时会临时放大" in html
+    assert "轨迹方向" in html
+    assert "成交占比只作为圆点大小的辅助提示" in html
     assert "市场宽度" in html
     assert "综合评分" in html
     assert "行业详情" in html
     assert "ETF 业绩" in html
     assert "行业 ETF 归一化业绩" in html
-    assert "今日变化" in html
+    assert "今日变化" not in html
     assert "分数贡献" in html
     assert "数据质量" in html
     assert "口径说明" in html
@@ -67,6 +67,8 @@ def test_rotation_hover_trace_respects_selected_window(tmp_path):
     write_html(output, report)
     html = output.read_text(encoding="utf-8")
 
-    assert "const focusPathPoints = displayPath(focusPoint.path);" in html
+    assert "const pathEntries = DATA.industries.map(item =>" in html
+    assert "quietPaths.map(entry =>" in html
+    assert "focusPaths.map(entry =>" in html
     assert "Boolean(hovered)" not in html
     assert "forceFull" not in html
