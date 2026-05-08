@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from .scoring import legacy_score_industry
+
 
 @dataclass(frozen=True)
 class RotationSnapshot:
@@ -90,19 +92,13 @@ def score_industry(
     breadth_delta_5d: float | None,
     amount_confirm: bool,
 ) -> float:
-    price_score = _z_to_score(price_x)
-    momentum_score = _z_to_score(momentum_y)
-    breadth_score = 50.0 if breadth_ma20 is None else _clamp(breadth_ma20, 0, 100)
-    delta_score = 50.0 if breadth_delta_5d is None else _clamp(50 + breadth_delta_5d * 2, 0, 100)
-    amount_score = 100.0 if amount_confirm else 40.0
-    score = (
-        price_score * 0.30
-        + momentum_score * 0.25
-        + breadth_score * 0.20
-        + delta_score * 0.15
-        + amount_score * 0.10
+    return legacy_score_industry(
+        price_x=price_x,
+        momentum_y=momentum_y,
+        breadth_ma20=breadth_ma20,
+        breadth_delta_5d=breadth_delta_5d,
+        amount_confirm=amount_confirm,
     )
-    return round(score, 1)
 
 
 def status_label(

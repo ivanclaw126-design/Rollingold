@@ -7,6 +7,8 @@ import json
 from datetime import datetime
 from typing import Any
 
+from .render_assets import EXTRA_CSS, EXTRA_JS
+
 
 def render_html(report: dict[str, Any]) -> str:
     data_json = json.dumps(report, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
@@ -14,12 +16,16 @@ def render_html(report: dict[str, Any]) -> str:
     latest_date = html.escape(str(report["meta"]["latest_date"]))
     price_latest_date = html.escape(str(report["meta"].get("price_latest_date", "")))
     etf_latest_date = html.escape(str(report["meta"].get("etf_latest_date", "")))
-    quality = html.escape(str(report["meta"].get("data_quality", "未知")))
+    quality_payload = report["meta"].get("data_quality", {})
+    quality = html.escape(
+        str(quality_payload.get("summary", "未知") if isinstance(quality_payload, dict) else quality_payload)
+    )
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
   <title>Rollingold 行业轮动</title>
   <style>
     :root {{
@@ -442,6 +448,11 @@ def render_html(report: dict[str, Any]) -> str:
     .text-button:hover {{
       background: var(--panel);
     }}
+    .text-button.active {{
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }}
     table {{
       width: max-content;
       min-width: max(100%, 940px);
@@ -516,6 +527,24 @@ def render_html(report: dict[str, Any]) -> str:
       border: 1px solid var(--line);
       border-radius: 6px;
     }}
+    .etf-line-hit,
+    .etf-end-label {{
+      cursor: pointer;
+    }}
+    .etf-line-hit:focus-visible,
+    .etf-end-label:focus-visible {{
+      outline: none;
+    }}
+    .etf-line-hit:focus-visible + .etf-line-visible {{
+      stroke-width: 3.2;
+      opacity: .96;
+    }}
+    .etf-end-label text {{
+      paint-order: stroke;
+      stroke: #fbfcfa;
+      stroke-width: 3px;
+      stroke-linejoin: round;
+    }}
     .etf-summary {{
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -557,6 +586,7 @@ def render_html(report: dict[str, Any]) -> str:
       display: block;
       margin: 0 auto;
     }}
+    {EXTRA_CSS}
     footer {{
       color: var(--muted);
       font-size: 12px;
@@ -637,11 +667,25 @@ def render_html(report: dict[str, Any]) -> str:
     <section>
       <div class="section-head">
         <h2>行业轮动判断</h2>
-        <p class="hint">先看价格强弱，再用宽度扩散验证趋势质量。</p>
+        <div class="action-row">
+          <p class="hint">先看价格强弱，再用宽度扩散验证趋势质量。</p>
+          <button class="text-button" id="copy-view-link" type="button">复制当前视图链接</button>
+          <button class="text-button" id="reset-view" type="button">恢复默认</button>
+          <button class="text-button" id="download-report" type="button">下载当前 report JSON</button>
+          <button class="text-button" id="download-factor-csv" type="button">下载因子 CSV</button>
+        </div>
       </div>
       <div class="insight-grid" id="market-insights"></div>
       <div class="signal-grid" id="signal-groups"></div>
       <p class="method-note">口径：价格相对轮动使用行业相对申万 A 指的强弱 z-score 和动量 z-score；MA20 宽度为行业内成分站上 20 日均线比例，1 日 / 5 日变化均为百分点变化。</p>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>今日变化</h2>
+        <p class="hint">展示阶段迁移、分数变化和主要触发原因。</p>
+      </div>
+      <div class="change-list" id="change-log"></div>
     </section>
 
     <div class="grid">
@@ -679,14 +723,44 @@ def render_html(report: dict[str, Any]) -> str:
         <h2>市场宽度热力图</h2>
         <div class="heatmap-actions">
           <p class="hint" id="heatmap-hint">默认展示最近 10 个交易日，按当前 MA20 宽度排序；窄屏可横向滑动。</p>
-          <button class="text-button" id="heatmap-toggle" type="button">显示全部时间</button>
+          <div class="mini-controls" aria-label="热力图排序">
+            <button class="text-button" data-heatmap-sort="score" type="button">按分数</button>
+            <button class="text-button" data-heatmap-sort="breadth" type="button">按宽度</button>
+            <button class="text-button" data-heatmap-sort="phase" type="button">按阶段</button>
+          </div>
+          <div class="mini-controls" aria-label="热力图时间范围">
+            <button class="text-button" data-heatmap-window="10" type="button">近10日</button>
+            <button class="text-button" data-heatmap-window="30" type="button">近30日</button>
+            <button class="text-button" data-heatmap-window="all" type="button">全部</button>
+          </div>
         </div>
       </div>
       <div class="heatmap-wrap" id="heatmap"></div>
     </section>
 
+    <section>
+      <div class="section-head">
+        <h2>数据质量</h2>
+        <p class="hint">拆分价格、宽度和 ETF 数据状态，避免把接口失败隐藏成单一日期。</p>
+      </div>
+      <div class="quality-grid" id="quality-grid"></div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>策略实验室</h2>
+        <p class="hint">Top-N 行业轮动历史模拟；历史模拟，不代表未来收益。</p>
+      </div>
+      <div class="strategy-grid" id="strategy-lab"></div>
+      <div class="etf-chart-scroll" aria-label="策略实验室净值和回撤曲线，窄屏可横向滑动查看">
+        <svg id="strategy-chart" viewBox="0 0 960 360" role="img" aria-label="策略实验室净值和回撤曲线"></svg>
+      </div>
+      <p class="method-note">策略仅用于验证信号与规划观察框架，默认使用申万行业指数收益、下一交易日执行和交易成本，不使用 ETF 收益。</p>
+    </section>
+
     <footer>
       数据来源：AKShare 申万一级行业指数、大盘云图 MA20 行业宽度接口。行业口径为“宽度行业口径 + 申万价格口径映射”，合成行业使用等权平均。页面仅供研究参考，不构成投资建议。
+      <a href="methodology.md">方法论</a> · <a href="data_sources.md">数据源说明</a>
     </footer>
     </div>
 
@@ -726,14 +800,21 @@ def render_html(report: dict[str, Any]) -> str:
   </main>
   <script>
     const DATA = {data_json};
-    let activeTab = 'rotation';
-    let mode = 'daily';
-    let selected = DATA.industries[0]?.name;
-    let selectedEtf = DATA.etfs?.items?.[0]?.code;
-    let etfWindow = 20;
+    {EXTRA_JS}
+    const initialParams = new URLSearchParams(window.location.search);
+    const storedState = (() => {{
+      try {{ return JSON.parse(localStorage.getItem('rollingold:view') || '{{}}'); }}
+      catch (_) {{ return {{}}; }}
+    }})();
+    let activeTab = initialParams.get('tab') || storedState.tab || 'rotation';
+    let mode = initialParams.get('period') === 'weekly' ? 'weekly' : (storedState.mode || 'daily');
+    let selected = initialParams.get('industry') || storedState.industry || DATA.industries[0]?.name;
+    let selectedEtf = storedState.etf || DATA.etfs?.items?.[0]?.code;
+    let etfWindow = Number(storedState.etfWindow || 20);
     let hovered = null;
-    let traceMode = '20';
-    let heatmapExpanded = false;
+    let traceMode = initialParams.get('trace') || storedState.trace || '20';
+    let heatmapSort = initialParams.get('sort') || storedState.sort || 'breadth';
+    let heatmapWindow = initialParams.get('heatmap') || storedState.heatmap || '10';
 
     const colorMap = {{
       '领涨': '#16885d',
@@ -771,8 +852,24 @@ def render_html(report: dict[str, Any]) -> str:
         return;
       }}
       selected = name;
+      saveState();
       renderAll();
       restoreFocus(focusKey);
+    }}
+
+    function saveState(updateUrl = true) {{
+      const payload = {{ tab: activeTab, mode, industry: selected, trace: traceMode, sort: heatmapSort, heatmap: heatmapWindow, etf: selectedEtf, etfWindow }};
+      localStorage.setItem('rollingold:view', JSON.stringify(payload));
+      if (!updateUrl) return;
+      const params = new URLSearchParams();
+      params.set('period', mode);
+      params.set('score', DATA.methodology?.score_preset || 'balanced_v2');
+      params.set('trace', traceMode);
+      params.set('sort', heatmapSort);
+      params.set('industry', selected || '');
+      if (activeTab !== 'rotation') params.set('tab', activeTab);
+      const next = `${{window.location.pathname}}?${{params.toString()}}${{window.location.hash}}`;
+      window.history.replaceState(null, '', next);
     }}
 
     function onIndustryKey(event, name, focusKey) {{
@@ -815,10 +912,9 @@ def render_html(report: dict[str, Any]) -> str:
       if (mode === 'weekly') return value === '60' ? '26周' : '8周';
       return value === '60' ? '60日' : '20日';
     }}
-    function displayPath(points, forceFull = false) {{
+    function displayPath(points) {{
       const source = points || [];
       if (!source.length) return [];
-      if (forceFull) return source.slice(-(mode === 'weekly' ? 26 : 60));
       if (traceMode === 'latest') return [];
       return source.slice(-traceWindow());
     }}
@@ -865,7 +961,7 @@ def render_html(report: dict[str, Any]) -> str:
       const labels = [
         ['走强', 214, 134], ['领涨', 506, 134], ['领跌', 214, 286], ['走弱', 506, 286]
       ];
-      const focusPathPoints = displayPath(focusPoint.path, Boolean(hovered));
+      const focusPathPoints = displayPath(focusPoint.path);
       const focusStart = focusPathPoints[0];
       const focusEnd = focusPathPoints[focusPathPoints.length - 1];
       svg.innerHTML = `
@@ -890,15 +986,17 @@ def render_html(report: dict[str, Any]) -> str:
           const color = colorMap[point.quadrant] || '#66716d';
           const isSelected = item.name === selected;
           const isFocused = item.name === focusName;
-          const radius = isSelected ? 8 : (isFocused ? 7 : 5);
+          const heat = Math.max(0, Math.min(1, (item.amount_share || 0) * 16));
+          const radius = isSelected ? 9 : (isFocused ? 8 : 5 + heat * 4);
+          const opacity = Math.max(.42, Math.min(1, item.confidence || .75));
           const x = scaleX(point.x, limit);
           const y = scaleY(point.y, limit);
           const labelX = clamp(x + 10, 78, 638);
           const labelY = clamp(y + 4, 66, 354);
           return `<g class="industry-dot" data-name="${{item.name}}" data-focus-key="dot-${{item.rank}}" role="button" tabindex="0" aria-label="选择${{item.name}}" style="cursor:pointer">
-            <title>${{item.name}}｜${{point.quadrant}}｜强弱 ${{fmt(point.x)}}｜动量 ${{fmt(point.y)}}｜评分 ${{fmt(item.score)}}</title>
+            <title>${{item.name}}｜${{item.phase}}｜强弱 ${{fmt(point.x)}}｜动量 ${{fmt(point.y)}}｜评分 ${{fmt(item.score)}}｜宽度 ${{fmt(item.breadth_ma20)}}｜成交 ${{fmt((item.amount_share || 0) * 100)}}%｜风险 ${{signedPct((item.risk?.vol_20 || 0) * 100)}}</title>
             <rect x="${{x - 22}}" y="${{y - 22}}" width="44" height="44" fill="transparent"></rect>
-            <circle cx="${{x}}" cy="${{y}}" r="${{radius}}" fill="${{color}}" stroke="${{isFocused ? '#17201c' : '#fff'}}" stroke-width="${{isSelected || isFocused ? 2.4 : 1.5}}" opacity="${{hovered && !isFocused ? .58 : 1}}"></circle>
+            <circle cx="${{x}}" cy="${{y}}" r="${{radius}}" fill="${{color}}" stroke="${{isFocused ? '#17201c' : '#fff'}}" stroke-width="${{isSelected || isFocused ? 2.4 : 1.5}}" opacity="${{hovered && !isFocused ? .46 : opacity}}"></circle>
             <text class="dot-label ${{isSelected ? 'selected' : ''}}" x="${{labelX}}" y="${{labelY}}" fill="#17201c">${{item.name}}</text>
           </g>`;
         }}).join('')}}
@@ -921,6 +1019,15 @@ def render_html(report: dict[str, Any]) -> str:
       }});
     }}
 
+    function breakdownHtml(item) {{
+      const labels = {{ trend: '趋势', momentum: '动量', breadth: '宽度', liquidity: '成交', risk: '风险', data_quality: '数据' }};
+      const entries = Object.entries(item.score_breakdown || {{}}).filter(([key]) => key !== 'total');
+      return `<div class="breakdown-list">${{entries.map(([key, value]) => {{
+        const width = Math.min(100, Math.abs(Number(value) || 0) * 1.6);
+        return `<div class="breakdown-row"><span>${{labels[key] || key}}</span><span class="breakdown-track"><span class="breakdown-fill ${{value < 0 ? 'negative' : ''}}" style="width:${{width}}%"></span></span><strong>${{fmt(value)}}</strong></div>`;
+      }}).join('')}}</div>`;
+    }}
+
     function renderDetail() {{
       const item = DATA.industries.find(entry => entry.name === selected) || DATA.industries[0];
       const point = activePoint(item);
@@ -928,20 +1035,37 @@ def render_html(report: dict[str, Any]) -> str:
         <h3>${{item.name}}</h3>
         <div class="tags">
           <span class="tag">${{point.quadrant}}</span>
+          <span class="tag">${{item.phase}}</span>
           <span class="tag">${{item.status}}</span>
           <span class="tag">成交${{item.amount_confirm ? '确认' : '偏弱'}}</span>
+          <span class="tag">置信度 ${{fmt((item.confidence || 0) * 100)}}%</span>
         </div>
         <div class="detail-grid">
           <div class="metric"><span>综合评分</span><strong>${{fmt(item.score)}}</strong></div>
+          <div class="metric"><span>分数变化</span><strong>${{signed(item.score_delta_1d)}}</strong></div>
           <div class="metric"><span>MA20 宽度</span><strong>${{fmt(item.breadth_ma20)}}%</strong></div>
           <div class="metric"><span>1 日变化</span><strong>${{signed(item.breadth_delta_1d)}}</strong></div>
           <div class="metric"><span>5 日变化</span><strong>${{signed(item.breadth_delta_5d)}}</strong></div>
           <div class="metric"><span>相对强弱</span><strong>${{fmt(point.x)}}</strong></div>
           <div class="metric"><span>相对动量</span><strong>${{fmt(point.y)}}</strong></div>
+          <div class="metric"><span>20日波动</span><strong>${{signedPct((item.risk?.vol_20 || 0) * 100)}}</strong></div>
         </div>
+        <h2>分数贡献</h2>
+        ${{breakdownHtml(item)}}
         <p>${{item.comment}}</p>
+        <p class="muted-block">${{item.interpretation}}</p>
+        <button class="text-button" id="copy-industry-summary" type="button">复制行业详情摘要</button>
         <div class="tags">${{item.divergences.map(text => `<span class="tag">${{text}}</span>`).join('')}}</div>
+        <h2>口径说明</h2>
+        <p class="muted-block">${{item.methodology_note}}</p>
+        <h2>数据质量</h2>
+        <p class="muted-block">${{item.data_quality?.message || '-'}}；价格：${{item.data_quality?.price}}，宽度：${{item.data_quality?.breadth}}，ETF：${{item.data_quality?.etf}}。</p>
       `;
+      document.getElementById('copy-industry-summary')?.addEventListener('click', event => {{
+        safeCopy(`${{item.name}}：当前处于「${{item.phase}}」，综合评分 ${{fmt(item.score)}}。${{item.interpretation}} 口径：${{item.methodology_note}}`).then(() => {{
+          event.currentTarget.textContent = '已复制行业摘要';
+        }});
+      }});
     }}
 
     function renderRankings() {{
@@ -1030,15 +1154,96 @@ def render_html(report: dict[str, Any]) -> str:
       }});
     }}
 
+    function renderChangeLog() {{
+      const changes = DATA.change_log || [];
+      document.getElementById('change-log').innerHTML = changes.slice(0, 8).map((change, index) => `
+        <div class="change-item">
+          <button type="button" data-name="${{change.industry}}" data-focus-key="change-${{index}}">${{change.industry}}：${{change.from || '-'}} → ${{change.to || '-'}}</button>
+          <p class="muted-block">分数变化 ${{signed(change.score_delta)}}；${{(change.reason || []).join('、')}}</p>
+        </div>
+      `).join('') || '<div class="change-item">暂无显著变化</div>';
+      document.querySelectorAll('.change-item button[data-name]').forEach(node => bindIndustryControl(node));
+    }}
+
+    function renderQuality() {{
+      const quality = DATA.meta?.data_quality || {{}};
+      const sources = quality.sources || [];
+      document.getElementById('quality-grid').innerHTML = [
+        `<div class="quality-item"><strong>总体：${{quality.summary || '-'}}</strong><p class="muted-block">日期状态：${{DATA.meta?.date_alignment_status || '-'}}；综合置信度 ${{fmt((quality.confidence || 0) * 100)}}%</p></div>`,
+        ...sources.map(source => `
+          <div class="quality-item">
+            <strong>${{source.source}}</strong>
+            <p class="muted-block">最新日：${{source.latest_date || '-'}}；行数：${{source.rows ?? '-'}}</p>
+            <p class="muted-block">${{source.is_fresh ? 'fresh' : 'stale'}}${{source.stale_reason ? '：' + source.stale_reason : ''}}</p>
+          </div>
+        `)
+      ].join('');
+    }}
+
+    function renderStrategyLab() {{
+      const lab = DATA.strategy_lab || {{}};
+      const results = lab.results || [];
+      document.getElementById('strategy-lab').innerHTML = [
+        ...results.slice(0, 3).map(result => `
+          <div class="strategy-item">
+            <strong>Top ${{result.config.top_n}} / ${{result.config.rebalance_days}}D</strong>
+            <p class="muted-block">年化 ${{signedPct((result.metrics.annual_return || 0) * 100)}}｜回撤 ${{signedPct((result.metrics.max_drawdown || 0) * 100)}}｜换手 ${{fmt(result.metrics.turnover_average)}}</p>
+            <p class="muted-block">当前候选：${{(result.holdings?.at(-1)?.industries || []).join('、') || '-'}}</p>
+          </div>
+        `),
+        `<div class="strategy-item"><strong>参数敏感性</strong><p class="muted-block">${{(lab.sensitivity || []).map(row => `Top${{row.top_n}}/${{row.rebalance_days}}D 回撤 ${{signedPct((row.max_drawdown || 0) * 100)}}`).join('；')}}</p></div>`,
+        `<div class="strategy-item"><strong>风险说明</strong><p class="muted-block">${{lab.disclaimer || '研究参考，不构成投资建议；历史模拟，不代表未来收益'}}</p></div>`
+      ].join('');
+      renderStrategyChart(results[0]);
+    }}
+
+    function renderStrategyChart(result) {{
+      const svg = document.getElementById('strategy-chart');
+      if (!result?.equity_curve?.length) {{
+        svg.innerHTML = '<text x="480" y="180" text-anchor="middle" fill="#66716d">暂无策略曲线</text>';
+        return;
+      }}
+      const dates = result.dates || [];
+      const equity = result.equity_curve || [];
+      const benchmark = result.benchmark_curve || [];
+      const drawdown = result.drawdown_curve || [];
+      const left = 70, right = 900, top = 42, mid = 178, bottom = 308;
+      const allValues = equity.concat(benchmark).filter(Number.isFinite);
+      const min = Math.min(...allValues, 1);
+      const max = Math.max(...allValues, 1);
+      const span = Math.max(.01, max - min);
+      const x = index => left + index * ((right - left) / Math.max(1, dates.length - 1));
+      const yEq = value => mid - (value - min) * ((mid - top) / span);
+      const yDd = value => bottom - (value - Math.min(...drawdown, -.01)) * ((bottom - 210) / Math.max(.01, 0 - Math.min(...drawdown, -.01)));
+      const path = (values, y) => values.map((value, index) => `${{x(index).toFixed(1)}},${{y(value).toFixed(1)}}`).join(' ');
+      svg.innerHTML = `
+        <rect x="0" y="0" width="960" height="360" fill="#fbfcfa"></rect>
+        <text class="axis-label" x="70" y="28">策略净值 / 基准净值</text>
+        <line x1="${{left}}" y1="${{mid}}" x2="${{right}}" y2="${{mid}}" stroke="#d8e0da"></line>
+        <polyline points="${{path(benchmark, yEq)}}" fill="none" stroke="#9ca7a2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <polyline points="${{path(equity, yEq)}}" fill="none" stroke="#16885d" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <text class="axis-label" x="70" y="202">回撤曲线</text>
+        <line x1="${{left}}" y1="210" x2="${{right}}" y2="210" stroke="#d8e0da"></line>
+        <polyline points="${{path(drawdown, yDd)}}" fill="none" stroke="#c74d42" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <text class="axis-label" x="${{left}}" y="338">${{dates[0] || ''}}</text>
+        <text class="axis-label" x="${{right}}" y="338" text-anchor="end">${{dates.at(-1) || ''}}</text>
+      `;
+    }}
+
     function renderHeatmap() {{
-      const windowSize = heatmapExpanded ? DATA.breadth.dates.length : Math.min(10, DATA.breadth.dates.length);
+      const requestedWindow = heatmapWindow === 'all' ? DATA.breadth.dates.length : Number(heatmapWindow || 10);
+      const windowSize = Math.min(requestedWindow, DATA.breadth.dates.length);
       const dates = DATA.breadth.dates.slice(-windowSize);
       const offset = DATA.breadth.dates.length - dates.length;
       const order = DATA.industries.slice()
-        .sort((a, b) => (b.breadth_ma20 ?? -1) - (a.breadth_ma20 ?? -1))
+        .sort((a, b) => {{
+          if (heatmapSort === 'score') return (b.score ?? -1) - (a.score ?? -1);
+          if (heatmapSort === 'phase') return String(a.phase || '').localeCompare(String(b.phase || ''));
+          return (b.breadth_ma20 ?? -1) - (a.breadth_ma20 ?? -1);
+        }})
         .map(item => item.name);
       const indexByName = new Map(DATA.breadth.industries.map((name, index) => [name, index]));
-      const trendLabel = heatmapExpanded ? `趋势(全部${{dates.length}}日)` : `趋势(近${{dates.length}}日)`;
+      const trendLabel = heatmapWindow === 'all' ? `趋势(全部${{dates.length}}日)` : `趋势(近${{dates.length}}日)`;
       const header = `<tr><th>行业</th><th>状态</th><th>当前</th><th>1日</th><th>5日</th><th class="trend-cell">${{trendLabel}}</th>${{dates.map(date => `<th>${{date.slice(5)}}</th>`).join('')}}</tr>`;
       const rows = order.map(name => {{
         const item = DATA.industries.find(entry => entry.name === name) || {{}};
@@ -1059,10 +1264,11 @@ def render_html(report: dict[str, Any]) -> str:
         </tr>`;
       }}).join('');
       document.getElementById('heatmap').innerHTML = `<table>${{header}}${{rows}}</table>`;
-      document.getElementById('heatmap-toggle').textContent = heatmapExpanded ? '收起到近 10 日' : '显示全部时间';
-      document.getElementById('heatmap-hint').textContent = heatmapExpanded
+      document.querySelectorAll('[data-heatmap-sort]').forEach(node => node.classList.toggle('active', node.dataset.heatmapSort === heatmapSort));
+      document.querySelectorAll('[data-heatmap-window]').forEach(node => node.classList.toggle('active', node.dataset.heatmapWindow === heatmapWindow));
+      document.getElementById('heatmap-hint').textContent = heatmapWindow === 'all'
         ? `已展示全部 ${{dates.length}} 个交易日；窄屏可横向滑动。`
-        : `默认展示最近 ${{dates.length}} 个交易日；窄屏可横向滑动。`;
+        : `展示最近 ${{dates.length}} 个交易日，当前按${{heatmapSort === 'score' ? '分数' : heatmapSort === 'phase' ? '阶段' : '宽度'}}排序。`;
     }}
 
     function switchTab(tab) {{
@@ -1075,6 +1281,7 @@ def render_html(report: dict[str, Any]) -> str:
       document.getElementById('panel-rotation').hidden = tab !== 'rotation';
       document.getElementById('panel-etf').hidden = tab !== 'etf';
       document.querySelector('.switch').style.visibility = tab === 'rotation' ? 'visible' : 'hidden';
+      saveState();
       if (tab === 'etf') renderEtf();
     }}
 
@@ -1098,6 +1305,18 @@ def render_html(report: dict[str, Any]) -> str:
     function etfWindowReturn(item) {{
       const series = etfSeries(item);
       return series.length ? series[series.length - 1].value : null;
+    }}
+
+    function selectEtf(code, options = {{}}) {{
+      const focusKey = options.focusKey;
+      if (!code || selectedEtf === code) {{
+        restoreFocus(focusKey);
+        return;
+      }}
+      selectedEtf = code;
+      if (options.persist) saveState(false);
+      renderEtf();
+      restoreFocus(focusKey);
     }}
 
     function etfColor(index) {{
@@ -1162,22 +1381,65 @@ def render_html(report: dict[str, Any]) -> str:
       const max = rawMax + pad;
       const span = Math.max(1, max - min);
       const left = 70;
-      const right = 900;
+      const right = 760;
       const top = 42;
       const bottom = 348;
       const x = date => left + (dateIndex.get(date) || 0) * ((right - left) / Math.max(1, dates.length - 1));
       const y = value => bottom - (value - min) * ((bottom - top) / span);
       const ticks = [min, min + span * .25, min + span * .5, min + span * .75, max];
+      const selectedEntry = series.find(entry => entry.item.code === selectedEtf) || series[0];
+      selectedEtf = selectedEntry.item.code;
       const drawOrder = series.slice().sort((a, b) => (a.item.code === selectedEtf ? 1 : 0) - (b.item.code === selectedEtf ? 1 : 0));
       const lines = drawOrder.map(entry => {{
         const selectedLine = entry.item.code === selectedEtf;
         const color = selectedLine ? '#17201c' : etfColor(entry.index);
         const points = entry.points.map(point => `${{x(point.date).toFixed(1)}},${{y(point.value).toFixed(1)}}`).join(' ');
-        return `<polyline points="${{points}}" fill="none" stroke="${{color}}" stroke-width="${{selectedLine ? 3.2 : 1.45}}" opacity="${{selectedLine ? .96 : .36}}" stroke-linecap="round" stroke-linejoin="round"></polyline>`;
+        const focusKey = `etf-line-${{entry.item.code}}`;
+        const label = `${{entry.item.industry}} ${{signedPct(entry.points[entry.points.length - 1].value)}}`;
+        return `<g>
+          <polyline class="etf-line-hit" data-etf-code="${{entry.item.code}}" data-focus-key="${{focusKey}}" role="button" tabindex="0" aria-label="选择${{label}}" points="${{points}}" fill="none" stroke="transparent" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" pointer-events="stroke"></polyline>
+          <polyline class="etf-line-visible" points="${{points}}" fill="none" stroke="${{color}}" stroke-width="${{selectedLine ? 3.2 : 1.45}}" opacity="${{selectedLine ? .96 : .34}}" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"></polyline>
+        </g>`;
       }}).join('');
-      const selectedEntry = series.find(entry => entry.item.code === selectedEtf) || series[0];
-      selectedEtf = selectedEntry.item.code;
-      const last = selectedEntry.points[selectedEntry.points.length - 1];
+      const labelTop = 48;
+      const labelBottom = 342;
+      const endpointEntries = series.map(entry => {{
+        const last = entry.points[entry.points.length - 1];
+        return {{
+          entry,
+          last,
+          endX: x(last.date),
+          endY: y(last.value),
+          labelY: clamp(y(last.value), labelTop, labelBottom)
+        }};
+      }}).sort((a, b) => a.endY - b.endY);
+      const minLabelGap = Math.min(13, (labelBottom - labelTop) / Math.max(1, endpointEntries.length - 1));
+      for (let index = 1; index < endpointEntries.length; index += 1) {{
+        endpointEntries[index].labelY = Math.max(endpointEntries[index].labelY, endpointEntries[index - 1].labelY + minLabelGap);
+      }}
+      if (endpointEntries.length) {{
+        endpointEntries[endpointEntries.length - 1].labelY = Math.min(endpointEntries[endpointEntries.length - 1].labelY, labelBottom);
+      }}
+      for (let index = endpointEntries.length - 2; index >= 0; index -= 1) {{
+        endpointEntries[index].labelY = Math.min(endpointEntries[index].labelY, endpointEntries[index + 1].labelY - minLabelGap);
+      }}
+      if (endpointEntries.length) {{
+        endpointEntries[0].labelY = Math.max(endpointEntries[0].labelY, labelTop);
+      }}
+      const labelX = right + 18;
+      const labelDrawOrder = endpointEntries.slice().sort((a, b) => (a.entry.item.code === selectedEtf ? 1 : 0) - (b.entry.item.code === selectedEtf ? 1 : 0));
+      const endLabels = labelDrawOrder.map(labelEntry => {{
+        const selectedLine = labelEntry.entry.item.code === selectedEtf;
+        const color = selectedLine ? '#17201c' : etfColor(labelEntry.entry.index);
+        const opacity = selectedLine ? .98 : .72;
+        const focusKey = `etf-label-${{labelEntry.entry.item.code}}`;
+        const text = `${{labelEntry.entry.item.industry}} ${{signedPct(labelEntry.last.value)}}`;
+        return `<g class="etf-end-label" data-etf-code="${{labelEntry.entry.item.code}}" data-focus-key="${{focusKey}}" role="button" tabindex="0" aria-label="选择${{text}}">
+          <line x1="${{labelEntry.endX.toFixed(1)}}" y1="${{labelEntry.endY.toFixed(1)}}" x2="${{(labelX - 7).toFixed(1)}}" y2="${{labelEntry.labelY.toFixed(1)}}" stroke="${{color}}" stroke-width="${{selectedLine ? 1.6 : 1}}" opacity="${{opacity * .55}}"></line>
+          <circle cx="${{labelEntry.endX.toFixed(1)}}" cy="${{labelEntry.endY.toFixed(1)}}" r="${{selectedLine ? 6.4 : 3.1}}" fill="${{color}}" stroke="#fff" stroke-width="${{selectedLine ? 2 : 1.3}}" opacity="${{opacity}}"></circle>
+          <text x="${{labelX.toFixed(1)}}" y="${{(labelEntry.labelY + 3.4).toFixed(1)}}" fill="${{color}}" font-size="${{selectedLine ? 13 : 10.4}}" font-weight="${{selectedLine ? 850 : 720}}" opacity="${{opacity}}">${{text}}</text>
+        </g>`;
+      }}).join('');
       const zeroY = y(0);
       svg.innerHTML = `
         <rect x="0" y="0" width="960" height="420" fill="#fbfcfa"></rect>
@@ -1189,11 +1451,22 @@ def render_html(report: dict[str, Any]) -> str:
         ${{dates.filter((_, index) => index === 0 || index === dates.length - 1 || index % Math.max(1, Math.floor(dates.length / 5)) === 0).map(date => `
           <text class="axis-label" x="${{x(date).toFixed(1)}}" y="376" text-anchor="middle">${{date.slice(5)}}</text>
         `).join('')}}
-        <text class="axis-label" x="820" y="402">窗口归一化累计涨跌幅</text>
+        <text class="axis-label" x="688" y="402">窗口归一化累计涨跌幅</text>
         ${{lines}}
-        <circle cx="${{x(last.date).toFixed(1)}}" cy="${{y(last.value).toFixed(1)}}" r="6.5" fill="#17201c" stroke="#fff" stroke-width="2"></circle>
-        <text x="${{Math.min(850, x(last.date) + 12).toFixed(1)}}" y="${{clamp(y(last.value) - 10, 54, 330).toFixed(1)}}" fill="#17201c" font-size="13" font-weight="800">${{selectedEntry.item.industry}} ${{signedPct(last.value)}}</text>
+        ${{endLabels}}
       `;
+      svg.querySelectorAll('.etf-line-hit, .etf-end-label').forEach(node => {{
+        const pick = persist => selectEtf(node.dataset.etfCode, {{ focusKey: node.dataset.focusKey, persist }});
+        node.addEventListener('pointerenter', () => pick(false));
+        node.addEventListener('pointermove', () => pick(false));
+        node.addEventListener('click', () => pick(true));
+        node.addEventListener('focus', () => pick(false));
+        node.addEventListener('keydown', event => {{
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          pick(true);
+        }});
+      }});
     }}
 
     function renderEtfTable() {{
@@ -1203,7 +1476,7 @@ def render_html(report: dict[str, Any]) -> str:
       }})).sort((a, b) => (b.windowReturn ?? -999) - (a.windowReturn ?? -999));
       const header = '<tr><th>行业</th><th>ETF</th><th>代码</th><th>规模(亿元)</th><th>最新日涨跌</th><th>行业指数日涨跌</th><th>窗口收益</th><th>走势一致性</th><th>相关</th><th>同涨跌</th><th>备注</th></tr>';
       const body = rows.map(({{ item, windowReturn }}) => `
-        <tr class="etf-row ${{item.code === selectedEtf ? 'selected' : ''}}" data-etf-code="${{item.code}}" role="button" tabindex="0">
+        <tr class="etf-row ${{item.code === selectedEtf ? 'selected' : ''}}" data-etf-code="${{item.code}}" data-focus-key="etf-row-${{item.code}}" role="button" tabindex="0">
           <td>${{item.industry}}</td>
           <td>${{item.name}}</td>
           <td>${{item.code}}</td>
@@ -1219,10 +1492,7 @@ def render_html(report: dict[str, Any]) -> str:
       `).join('');
       document.getElementById('etf-table').innerHTML = `<table>${{header}}${{body}}</table>`;
       document.querySelectorAll('.etf-row').forEach(node => {{
-        const pick = () => {{
-          selectedEtf = node.dataset.etfCode;
-          renderEtf();
-        }};
+        const pick = () => selectEtf(node.dataset.etfCode, {{ focusKey: node.dataset.focusKey, persist: true }});
         node.addEventListener('click', pick);
         node.addEventListener('keydown', event => {{
           if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -1290,6 +1560,7 @@ def render_html(report: dict[str, Any]) -> str:
       return `${{value > 0 ? '+' : ''}}${{Number(value).toFixed(2)}}%`;
     }}
     function renderAll() {{
+      if (!DATA.industries.some(item => item.name === selected)) selected = DATA.industries[0]?.name;
       document.getElementById('mode-daily').classList.toggle('active', mode === 'daily');
       document.getElementById('mode-weekly').classList.toggle('active', mode === 'weekly');
       document.querySelectorAll('[data-trace-mode]').forEach(node => {{
@@ -1299,31 +1570,86 @@ def render_html(report: dict[str, Any]) -> str:
       document.getElementById('history-label').textContent = traceLabel();
       renderMarketInsights();
       renderSignalGroups();
+      renderChangeLog();
       renderRotation();
       renderDetail();
       renderRankings();
       renderHeatmap();
+      renderQuality();
+      renderStrategyLab();
       if (activeTab === 'etf') renderEtf();
     }}
     document.querySelectorAll('[data-tab]').forEach(node => {{
       node.addEventListener('click', () => switchTab(node.dataset.tab));
     }});
-    document.getElementById('mode-daily').addEventListener('click', () => {{ mode = 'daily'; hovered = null; renderAll(); }});
-    document.getElementById('mode-weekly').addEventListener('click', () => {{ mode = 'weekly'; hovered = null; renderAll(); }});
+    document.getElementById('mode-daily').addEventListener('click', () => {{ mode = 'daily'; hovered = null; saveState(); renderAll(); }});
+    document.getElementById('mode-weekly').addEventListener('click', () => {{ mode = 'weekly'; hovered = null; saveState(); renderAll(); }});
     document.querySelectorAll('[data-trace-mode]').forEach(node => {{
       node.addEventListener('click', () => {{
         traceMode = node.dataset.traceMode;
         hovered = null;
+        saveState();
         renderAll();
       }});
     }});
     document.querySelectorAll('[data-etf-window]').forEach(node => {{
       node.addEventListener('click', () => {{
         etfWindow = Number(node.dataset.etfWindow);
+        saveState(false);
         renderEtf();
       }});
     }});
-    document.getElementById('heatmap-toggle').addEventListener('click', () => {{ heatmapExpanded = !heatmapExpanded; renderHeatmap(); }});
+    document.querySelectorAll('[data-heatmap-sort]').forEach(node => {{
+      node.addEventListener('click', () => {{
+        heatmapSort = node.dataset.heatmapSort;
+        saveState();
+        renderHeatmap();
+      }});
+    }});
+    document.querySelectorAll('[data-heatmap-window]').forEach(node => {{
+      node.addEventListener('click', () => {{
+        heatmapWindow = node.dataset.heatmapWindow;
+        saveState();
+        renderHeatmap();
+      }});
+    }});
+    document.getElementById('copy-view-link').addEventListener('click', event => {{
+      saveState();
+      safeCopy(window.location.href).then(() => {{ event.currentTarget.textContent = '已复制视图链接'; }});
+    }});
+    document.getElementById('reset-view').addEventListener('click', () => {{
+      activeTab = 'rotation';
+      mode = 'daily';
+      selected = DATA.industries[0]?.name;
+      traceMode = '20';
+      heatmapSort = 'breadth';
+      heatmapWindow = '10';
+      saveState();
+      switchTab('rotation');
+      renderAll();
+    }});
+    document.getElementById('download-report').addEventListener('click', () => {{
+      const blob = new Blob([JSON.stringify(DATA, null, 2)], {{ type: 'application/json' }});
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `rollingold-report-${{DATA.meta?.latest_report_date || 'latest'}}.json`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }});
+    document.getElementById('download-factor-csv').addEventListener('click', () => {{
+      const columns = ['date', 'industry', 'score', 'rs', 'breadth'];
+      const rows = Object.entries(DATA.factor_history || {{}}).flatMap(([industry, series]) =>
+        (series.dates || []).map((date, index) => [date, industry, series.score?.[index], series.rs?.[index], series.breadth?.[index]])
+      );
+      const csv = [columns.join(','), ...rows.map(row => row.map(value => value == null ? '' : `"${{String(value).replaceAll('"', '""')}}"`).join(','))].join('\\n');
+      const blob = new Blob([csv], {{ type: 'text/csv;charset=utf-8' }});
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `rollingold-factor-${{DATA.meta?.latest_report_date || 'latest'}}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }});
+    switchTab(activeTab);
     renderAll();
   </script>
 </body>

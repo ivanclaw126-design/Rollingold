@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Rollingold Report",
+  "type": "object",
+  "required": ["meta", "industries", "change_log", "rankings", "breadth", "etfs", "strategy_lab", "methodology"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "generated_at",
+        "latest_report_date",
+        "price_date",
+        "breadth_date",
+        "etf_date",
+        "date_alignment_status",
+        "benchmark",
+        "data_quality",
+        "methodology_version"
+      ]
+    },
+    "industry_item": {
+      "type": "object",
+      "required": [
+        "name",
+        "rank",
+        "score",
+        "score_breakdown",
+        "phase",
+        "phase_transition",
+        "factors",
+        "risk",
+        "breadth",
+        "etf",
+        "data_quality",
+        "interpretation"
+      ]
+    }
+  }
+}

@@ -1,0 +1,26 @@
+score_presets:
+  default_v1:
+    price_relative_strength: 0.30
+    relative_momentum: 0.25
+    ma20_breadth: 0.20
+    breadth_delta_5d: 0.15
+    amount_confirm: 0.10
+  balanced_v2:
+    trend:
+      rs_z_120: 0.18
+      rs_rank_pct: 0.07
+    momentum:
+      rs_mom_20_z: 0.15
+      rs_accel_5_20: 0.05
+    breadth:
+      breadth_ma20: 0.12
+      breadth_slope_5: 0.08
+      breadth_persistence: 0.08
+    liquidity:
+      amount_share_z_60: 0.08
+      amount_mom_5: 0.04
+    risk:
+      vol_penalty: 0.06
+      drawdown_penalty: 0.06
+    data_quality:
+      confidence: 0.04
