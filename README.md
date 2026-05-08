@@ -1,10 +1,15 @@
 # Rollingold
 
-Rollingold 是一个面向盘后研究的行业轮动静态页面。第一版组合三类信号：
+Rollingold 是一个面向 A 股行业/板块轮动的静态研究工作台。页面用于盘后研究、信号解释和历史模拟，不输出个股推荐、不生成自动交易指令、不承诺收益。
+
+核心功能：
 
 - 价格相对轮动：申万一级行业相对默认基准 `801003` 申万 A 指的相对强弱和动量。
 - 市场宽度确认：大盘云图二级行业 MA20 站上率聚合到 26 个页面行业。
-- 综合评分排序：价格、动量、宽度、宽度改善和成交确认合成 0-100 分。
+- 可解释评分排序：趋势、动量、宽度、成交、风险和数据质量合成 0-100 分，并展示分数贡献。
+- 轮动阶段：低位修复、价格确认、趋势扩散、高位背离、动能衰退、弱势下行。
+- 数据质量：拆分价格、宽度、ETF 日期和接口状态。
+- 策略实验室：Top-N 行业轮动历史模拟，计入交易成本并明确标注“历史模拟，不代表未来收益”。
 
 页面是纯静态文件，目标发布路径为 `docs/index.html`，适合 GitHub Pages 的 `main:/docs` 来源。
 
@@ -24,10 +29,17 @@ python3 -m rollingold.site --mode data --refresh-cache --output reports/latest.j
 python3 -m rollingold.site --output docs/index.html
 ```
 
-离线 fixture 生成：
+离线 fixture 只用于测试页面结构，不代表真实行情；不要用它覆盖发布用的 `docs/index.html` 或 `reports/latest.json`。建议输出到临时文件：
 
 ```bash
-python3 -m rollingold.site --offline-fixture tests/fixtures --output docs/index.html
+python3 -m rollingold.site --offline-fixture tests/fixtures --output /tmp/rollingold-fixture.html
+```
+
+生成因子面板和回测摘要：
+
+```bash
+python3 -m rollingold.site --mode panel --output data/history/signal_panel_daily.csv
+python3 -m rollingold.site --mode backtest --output data/history/backtest_summary.json
 ```
 
 ## 测试
@@ -79,3 +91,11 @@ https://ivanclaw126-design.github.io/Rollingold/
 ```
 
 页面只用于研究参考，不构成投资建议。
+
+## 方法与数据源
+
+- [架构说明](docs/architecture.md)
+- [方法论](docs/methodology.md)
+- [数据源说明](docs/data_sources.md)
+
+数据来自 AKShare 申万行业指数、AKShare ETF 行情和大盘云图公开宽度接口。任何数据源失败、日期不一致或 ETF 近似口径都会在页面数据质量和行业详情中展示。

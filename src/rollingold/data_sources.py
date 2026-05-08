@@ -81,7 +81,7 @@ def load_etf_history(
         fixture = Path(offline_fixture) / f"etf_hist_{code}_daily.csv"
         if fixture.exists():
             return normalize_history(pd.read_csv(fixture))
-        return _load_fixture_history(code, "day", Path(offline_fixture))
+        return _empty_history()
 
     if start_date is None:
         start_date = (date.today() - timedelta(days=820)).strftime("%Y%m%d")
@@ -116,6 +116,16 @@ def normalize_history(df: pd.DataFrame) -> pd.DataFrame:
     out["成交额"] = pd.to_numeric(out["成交额"], errors="coerce")
     out = out.dropna(subset=["日期", "收盘"]).sort_values("日期")
     return out
+
+
+def _empty_history() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "日期": pd.to_datetime(pd.Series([], dtype="object")),
+            "收盘": pd.Series([], dtype="float64"),
+            "成交额": pd.Series([], dtype="float64"),
+        }
+    )
 
 
 def close_series(df: pd.DataFrame) -> pd.Series:

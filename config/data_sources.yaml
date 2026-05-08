@@ -1,0 +1,23 @@
+sources:
+  sw_index:
+    provider: AKShare
+    functions:
+      - index_hist_sw
+      - index_realtime_sw
+    fields_required: [日期, 收盘, 成交额]
+    freshness: trading_day
+    reliability_tier: public_unofficial_adapter
+  breadth_ma20:
+    provider: dapanyuntu
+    endpoint: https://sckd.dapanyuntu.com/api/api/industry_ma20_analysis_page?page=0
+    fields_required: [dates, industries, data]
+    freshness: trading_day
+    reliability_tier: undocumented_public_endpoint
+  etf:
+    provider: AKShare
+    functions:
+      - fund_etf_spot_em
+      - fund_etf_hist_em
+    fields_required: [日期, 收盘, 成交额]
+    freshness: trading_day
+    reliability_tier: public_unofficial_adapter
