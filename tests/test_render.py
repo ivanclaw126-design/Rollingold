@@ -28,7 +28,12 @@ def test_interactive_industry_items_are_keyboard_accessible(tmp_path):
     # Regression: ISSUE-001 — clickable industry items were not keyboard reachable.
     # Found by /qa on 2026-05-08
     # Report: .gstack/qa-reports/qa-report-local-file-2026-05-08.md
-    assert 'class="rank-item" data-name="${name}" type="button"' in html
-    assert 'class="signal-item" data-name="${item.name}" type="button"' in html
-    assert 'class="industry-dot" data-name="${item.name}" role="button" tabindex="0"' in html
-    assert "onIndustryKey(event, node.dataset.name)" in html
+    assert 'class="rank-item" data-name="${name}"' in html
+    assert 'class="signal-item" data-name="${item.name}"' in html
+    assert 'class="industry-dot" data-name="${item.name}"' in html
+    assert 'type="button" aria-label="选择${name}"' in html
+    assert 'role="button" tabindex="0"' in html
+    assert "data-focus-key" in html
+    assert "node.addEventListener('focus', pick)" in html
+    assert "restoreFocus(focusKey)" in html
+    assert "onIndustryKey(event, node.dataset.name, node.dataset.focusKey)" in html

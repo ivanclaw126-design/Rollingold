@@ -536,15 +536,33 @@
       };
     }
 
-    function selectIndustry(name) {
-      selected = name;
-      renderAll();
+    function restoreFocus(focusKey) {
+      if (!focusKey) return;
+      const node = document.querySelector(`[data-focus-key="${focusKey}"]`);
+      node?.focus({ preventScroll: true });
     }
 
-    function onIndustryKey(event, name) {
+    function selectIndustry(name, focusKey) {
+      if (selected === name) {
+        restoreFocus(focusKey);
+        return;
+      }
+      selected = name;
+      renderAll();
+      restoreFocus(focusKey);
+    }
+
+    function onIndustryKey(event, name, focusKey) {
       if (event.key !== 'Enter' && event.key !== ' ') return;
       event.preventDefault();
-      selectIndustry(name);
+      selectIndustry(name, focusKey);
+    }
+
+    function bindIndustryControl(node) {
+      const pick = () => selectIndustry(node.dataset.name, node.dataset.focusKey);
+      node.addEventListener('click', pick);
+      node.addEventListener('focus', pick);
+      node.addEventListener('keydown', event => onIndustryKey(event, node.dataset.name, node.dataset.focusKey));
     }
 
     function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
@@ -608,7 +626,7 @@
           const y = scaleY(point.y, limit);
           const labelX = clamp(x + 10, 78, 638);
           const labelY = clamp(y + 4, 66, 354);
-          return `<g class="industry-dot" data-name="${item.name}" role="button" tabindex="0" aria-label="选择${item.name}" style="cursor:pointer">
+          return `<g class="industry-dot" data-name="${item.name}" data-focus-key="dot-${item.rank}" role="button" tabindex="0" aria-label="选择${item.name}" style="cursor:pointer">
             <title>${item.name}｜${point.quadrant}｜强弱 ${fmt(point.x)}｜动量 ${fmt(point.y)}｜评分 ${fmt(item.score)}</title>
             <circle cx="${x}" cy="${y}" r="${radius}" fill="${color}" stroke="#fff" stroke-width="${isSelected ? 2.4 : 1.5}"></circle>
             <text class="dot-label ${isSelected ? 'selected' : ''}" x="${labelX}" y="${labelY}" fill="#17201c">${item.name}</text>
@@ -616,8 +634,7 @@
         }).join('')}
       `;
       svg.querySelectorAll('.industry-dot').forEach(node => {
-        node.addEventListener('click', () => selectIndustry(node.dataset.name));
-        node.addEventListener('keydown', event => onIndustryKey(event, node.dataset.name));
+        bindIndustryControl(node);
       });
     }
 
@@ -652,17 +669,17 @@
         ['弱势修复行业', DATA.rankings.weak_repair],
         ['走弱预警行业', DATA.rankings.slowing]
       ];
-      document.getElementById('rankings').innerHTML = groups.map(([title, items]) => `
+      document.getElementById('rankings').innerHTML = groups.map(([title, items], groupIndex) => `
         <div class="rank-list">
           <div class="rank-title">${title}</div>
-          ${items.map(name => {
+          ${items.map((name, itemIndex) => {
             const item = DATA.industries.find(entry => entry.name === name);
-            return `<button class="rank-item" data-name="${name}" type="button" aria-label="选择${name}"><span>${name}</span><span class="score">${fmt(item?.score)}</span></button>`;
+            return `<button class="rank-item" data-name="${name}" data-focus-key="rank-${groupIndex}-${itemIndex}" type="button" aria-label="选择${name}"><span>${name}</span><span class="score">${fmt(item?.score)}</span></button>`;
           }).join('') || '<div class="rank-item"><span>暂无</span><span></span></div>'}
         </div>
       `).join('');
       document.querySelectorAll('.rank-item[data-name]').forEach(node => {
-        node.addEventListener('click', () => selectIndustry(node.dataset.name));
+        bindIndustryControl(node);
       });
     }
 
@@ -714,19 +731,19 @@
         ['高位退潮', 'warn', 'MA20 宽度不低于 60%，但 5 日宽度已经转为回落。', buckets.cooling, item => `${fmt(item.breadth_ma20)}% / ${signed(item.breadth_delta_5d)}`],
         ['弱势回避', 'bad', 'MA20 宽度低于 45%，且价格相对轮动仍在领跌象限。', buckets.weak, item => `${fmt(item.score)}分`]
       ];
-      document.getElementById('signal-groups').innerHTML = groups.map(([title, tone, rule, items, meta]) => `
+      document.getElementById('signal-groups').innerHTML = groups.map(([title, tone, rule, items, meta], groupIndex) => `
         <div class="signal-card">
           <div class="signal-title ${tone}">${title}</div>
           <div class="signal-rule">${rule}</div>
-          ${items.slice(0, 5).map(item => `
-            <button class="signal-item" data-name="${item.name}" type="button" aria-label="选择${item.name}">
+          ${items.slice(0, 5).map((item, itemIndex) => `
+            <button class="signal-item" data-name="${item.name}" data-focus-key="signal-${groupIndex}-${itemIndex}" type="button" aria-label="选择${item.name}">
               <span>${item.name}</span><span>${meta(item)}</span>
             </button>
           `).join('') || '<div class="signal-item"><span>暂无</span><span></span></div>'}
         </div>
       `).join('');
       document.querySelectorAll('.signal-item[data-name]').forEach(node => {
-        node.addEventListener('click', () => selectIndustry(node.dataset.name));
+        bindIndustryControl(node);
       });
     }
 
