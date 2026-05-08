@@ -393,7 +393,7 @@ chore: update industry rotation report YYYY-MM-DD
 运行时间：
 
 ```text
-周一至周五 16:20 Asia/Shanghai
+周一至周五 18:30 Asia/Shanghai
 ```
 
 验收：
@@ -519,4 +519,3 @@ python3 -m rollingold.site --offline-fixture tests/fixtures --output docs/index.
 5. 无新交易日时不会产生无意义提交。
 6. 数据源失败时不会覆盖上一版可用页面。
 7. 页面明确标注“仅供研究参考，不构成投资建议”。
-

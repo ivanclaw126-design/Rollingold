@@ -31,9 +31,9 @@ cat > "$PLIST" <<PLIST
   <key>StartCalendarInterval</key>
   <dict>
     <key>Hour</key>
-    <integer>16</integer>
+    <integer>18</integer>
     <key>Minute</key>
-    <integer>20</integer>
+    <integer>30</integer>
   </dict>
   <key>StandardOutPath</key>
   <string>$ROOT/logs/daily-update.log</string>

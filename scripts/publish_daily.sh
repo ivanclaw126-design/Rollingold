@@ -31,8 +31,8 @@ if [ "$weekday" -gt 5 ]; then
   echo "not a weekday in Asia/Shanghai, skip"
   exit 0
 fi
-if [ "$clock" -lt 1620 ]; then
-  echo "before 16:20 Asia/Shanghai, skip"
+if [ "$clock" -lt 1830 ]; then
+  echo "before 18:30 Asia/Shanghai, skip"
   exit 0
 fi
 
@@ -50,7 +50,14 @@ tmp_html="$tmp_dir/index.html"
 "$PYTHON_BIN" -m rollingold.site --mode data --refresh-cache --breadth-input "$tmp_breadth" --output "$tmp_report"
 "$PYTHON_BIN" -m rollingold.site --data "$tmp_report" --output "$tmp_html"
 
-new_date="$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["meta"]["latest_date"])' "$tmp_report")"
+read -r new_date price_date breadth_date < <(
+  "$PYTHON_BIN" -c 'import json,sys; meta=json.load(open(sys.argv[1]))["meta"]; print(meta["latest_date"], meta["price_latest_date"], meta["breadth_latest_date"])' "$tmp_report"
+)
+if [ "$price_date" != "$breadth_date" ] || [ "$new_date" != "$price_date" ]; then
+  echo "source dates not aligned (latest=$new_date, price=$price_date, breadth=$breadth_date), keep previous report"
+  exit 0
+fi
+
 old_date=""
 if [ -f reports/latest.json ]; then
   old_date="$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["meta"].get("latest_date",""))' reports/latest.json 2>/dev/null || true)"
