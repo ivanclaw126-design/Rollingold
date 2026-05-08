@@ -15,6 +15,9 @@ def test_offline_site_generation_contains_required_sections(tmp_path):
     assert "市场宽度" in html
     assert "综合评分" in html
     assert "行业详情" in html
+    assert "ETF 业绩" in html
+    assert "行业 ETF 归一化业绩" in html
+    assert len(report["etfs"]["items"]) == 26
     assert "仅供研究参考，不构成投资建议" in html
     assert report["meta"]["latest_date"] >= "2026-05-06"
 
