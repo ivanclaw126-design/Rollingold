@@ -14,12 +14,13 @@ def load_sw_history(
     period: str,
     cache_dir: str | Path = "data/cache",
     offline_fixture: str | Path | None = None,
+    refresh: bool = False,
 ) -> pd.DataFrame:
     if offline_fixture:
         return _load_fixture_history(code, period, Path(offline_fixture))
 
     cache_path = Path(cache_dir) / f"sw_index_hist_{code}_{period}.csv"
-    if cache_path.exists():
+    if cache_path.exists() and not refresh:
         return normalize_history(pd.read_csv(cache_path))
 
     import akshare as ak
@@ -105,4 +106,3 @@ def _synthetic_from_template(df: pd.DataFrame, code: str) -> pd.DataFrame:
     out["收盘"] = [round(float(value) * scale * (1 + drift * idx), 4) for idx, value in zip(steps, out["收盘"])]
     out["成交额"] = [round(float(value) * (0.7 + digest[2] / 255 * 0.8), 4) for value in out["成交额"]]
     return out
-

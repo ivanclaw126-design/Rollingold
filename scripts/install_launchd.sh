@@ -19,6 +19,13 @@ cat > "$PLIST" <<PLIST
     <string>/bin/bash</string>
     <string>$ROOT/scripts/publish_daily.sh</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>ROLLINGOLD_PYTHON</key>
+    <string>$ROOT/.venv/bin/python</string>
+    <key>PYTHONPATH</key>
+    <string>$ROOT/src</string>
+  </dict>
   <key>WorkingDirectory</key>
   <string>$ROOT</string>
   <key>StartCalendarInterval</key>
@@ -41,4 +48,3 @@ launchctl bootstrap "gui/$(id -u)" "$PLIST"
 launchctl enable "gui/$(id -u)/com.spicyclaw.rollingold.daily"
 
 echo "installed $PLIST"
-

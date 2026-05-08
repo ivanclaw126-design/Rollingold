@@ -1,4 +1,6 @@
-from rollingold.breadth import aggregate_breadth, load_raw_payload
+import json
+
+from rollingold.breadth import BreadthDataError, aggregate_breadth, fetch_and_aggregate, load_raw_payload
 from rollingold.config import IndustryConfig, PriceSource, load_config
 
 
@@ -32,3 +34,30 @@ def test_fixture_aggregates_to_26_page_industries():
     assert result["latest_date"] == "2026-05-06"
     assert all(len(row) == len(result["dates"]) for row in result["values"])
 
+
+def test_fetch_and_aggregate_uses_existing_fallback_on_api_failure(tmp_path, monkeypatch):
+    fallback_path = tmp_path / "breadth_history.json"
+    fallback_path.write_text(
+        json.dumps(
+            {
+                "dates": ["2026-01-01"],
+                "industries": ["测试行业"],
+                "values": [[50.0]],
+                "latest_date": "2026-01-01",
+                "quality": {"status": "fresh", "message": "old"},
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    def fail_fetch(timeout=20):
+        raise BreadthDataError("offline")
+
+    monkeypatch.setattr("rollingold.breadth.fetch_breadth_raw", fail_fetch)
+
+    result = fetch_and_aggregate(fallback_path=fallback_path)
+
+    assert result["latest_date"] == "2026-01-01"
+    assert result["quality"]["status"] == "stale"
+    assert "沿用上一版" in result["quality"]["message"]

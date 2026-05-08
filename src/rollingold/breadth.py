@@ -212,6 +212,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Fetch and aggregate MA20 market breadth.")
     parser.add_argument("--output", default="data/state/breadth_history.json")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
+    parser.add_argument(
+        "--fallback",
+        help="Use this existing aggregated breadth JSON if the live API is unavailable.",
+    )
     parser.add_argument("--input", help="Read a saved raw breadth JSON instead of calling the API.")
     args = parser.parse_args(argv)
 
@@ -220,7 +224,7 @@ def main(argv: list[str] | None = None) -> int:
         raw = load_raw_payload(args.input)
         data = aggregate_breadth(raw, app_config.industries, fill_missing=True)
     else:
-        data = fetch_and_aggregate(config_path=args.config, fallback_path=args.output)
+        data = fetch_and_aggregate(config_path=args.config, fallback_path=args.fallback or args.output)
     write_breadth(args.output, data)
     print(f"wrote {args.output} ({len(data['industries'])} industries, latest {data['latest_date']})")
     return 0
@@ -228,4 +232,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

@@ -30,11 +30,24 @@ def build_report(
     breadth_path: str | Path = PROJECT_ROOT / "data" / "state" / "breadth_history.json",
     cache_dir: str | Path = PROJECT_ROOT / "data" / "cache",
     offline_fixture: str | Path | None = None,
+    refresh_cache: bool = False,
 ) -> dict[str, Any]:
     app_config = load_config(config_path)
     breadth = _load_breadth(app_config, breadth_path=breadth_path, offline_fixture=offline_fixture)
-    histories_day = _load_histories(app_config, period="day", cache_dir=cache_dir, offline_fixture=offline_fixture)
-    histories_week = _load_histories(app_config, period="week", cache_dir=cache_dir, offline_fixture=offline_fixture)
+    histories_day = _load_histories(
+        app_config,
+        period="day",
+        cache_dir=cache_dir,
+        offline_fixture=offline_fixture,
+        refresh_cache=refresh_cache,
+    )
+    histories_week = _load_histories(
+        app_config,
+        period="week",
+        cache_dir=cache_dir,
+        offline_fixture=offline_fixture,
+        refresh_cache=refresh_cache,
+    )
     benchmark_day = close_series(histories_day[app_config.benchmark_code])
     benchmark_week = close_series(histories_week[app_config.benchmark_code])
 
@@ -60,13 +73,13 @@ def build_report(
             page_closes_day[industry.name],
             benchmark_day,
             momentum_window=20,
-            path_points=20,
+            path_points=60,
         )
         weekly = rotation_snapshot(
             page_closes_week[industry.name],
             benchmark_week,
             momentum_window=4,
-            path_points=24,
+            path_points=52,
         )
         breadth_ma20 = breadth["latest_values"].get(industry.name)
         delta_1d = breadth["delta_1d"].get(industry.name)
@@ -186,6 +199,7 @@ def _load_histories(
     period: str,
     cache_dir: str | Path,
     offline_fixture: str | Path | None,
+    refresh_cache: bool,
 ) -> dict[str, pd.DataFrame]:
     codes = [app_config.benchmark_code] + app_config.all_price_codes
     histories: dict[str, pd.DataFrame] = {}
@@ -195,6 +209,7 @@ def _load_histories(
             period=period,
             cache_dir=cache_dir,
             offline_fixture=offline_fixture,
+            refresh=refresh_cache,
         )
     return histories
 
@@ -251,6 +266,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--breadth-input", default=str(PROJECT_ROOT / "data" / "state" / "breadth_history.json"))
     parser.add_argument("--cache-dir", default=str(PROJECT_ROOT / "data" / "cache"))
     parser.add_argument("--offline-fixture", help="Directory containing offline fixture files.")
+    parser.add_argument(
+        "--refresh-cache",
+        action="store_true",
+        help="Refresh AKShare price history even when local cache files exist.",
+    )
     args = parser.parse_args(argv)
 
     if args.mode == "data":
@@ -259,6 +279,7 @@ def main(argv: list[str] | None = None) -> int:
             breadth_path=args.breadth_input,
             cache_dir=args.cache_dir,
             offline_fixture=args.offline_fixture,
+            refresh_cache=args.refresh_cache,
         )
         write_report(args.output, report)
         print(f"wrote {args.output} ({len(report['industries'])} industries, latest {report['meta']['latest_date']})")
@@ -272,6 +293,7 @@ def main(argv: list[str] | None = None) -> int:
             breadth_path=args.breadth_input,
             cache_dir=args.cache_dir,
             offline_fixture=args.offline_fixture,
+            refresh_cache=args.refresh_cache,
         )
     write_html(args.output, report)
     print(f"wrote {args.output}")
@@ -280,4 +302,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

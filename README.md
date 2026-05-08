@@ -20,7 +20,7 @@ python3 -m pip install -e ".[dev]"
 
 ```bash
 python3 -m rollingold.breadth --output data/state/breadth_history.json
-python3 -m rollingold.site --mode data --output reports/latest.json
+python3 -m rollingold.site --mode data --refresh-cache --output reports/latest.json
 python3 -m rollingold.site --output docs/index.html
 ```
 
@@ -49,6 +49,8 @@ bash scripts/publish_daily.sh
 ```
 
 脚本会在周一至周五 16:20 后生成当日页面；如果最新交易日没有变化，则跳过提交。生成失败时不会覆盖上一版 `reports/latest.json` 或 `docs/index.html`。
+
+自动更新脚本会优先使用项目 `.venv/bin/python`，也可以通过 `ROLLINGOLD_PYTHON=/path/to/python` 指定运行环境。盘后更新会强制刷新 AKShare 价格缓存；宽度接口失败时会沿用上一版 `data/state/breadth_history.json` 并在页面数据质量里标注。
 
 安装本机 launchd：
 

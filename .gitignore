@@ -17,3 +17,4 @@ logs/*
 reports/*
 !reports/.gitkeep
 !reports/latest.json
+.gstack/

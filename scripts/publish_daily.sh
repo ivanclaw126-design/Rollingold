@@ -6,6 +6,19 @@ cd "$ROOT"
 
 export PYTHONPATH="$ROOT/src:${PYTHONPATH:-}"
 
+PYTHON_BIN="${ROLLINGOLD_PYTHON:-}"
+if [ -n "$PYTHON_BIN" ] && [ ! -x "$PYTHON_BIN" ]; then
+  echo "configured ROLLINGOLD_PYTHON is not executable: $PYTHON_BIN" >&2
+  exit 1
+fi
+if [ -z "$PYTHON_BIN" ]; then
+  if [ -x "$ROOT/.venv/bin/python" ]; then
+    PYTHON_BIN="$ROOT/.venv/bin/python"
+  else
+    PYTHON_BIN="python3"
+  fi
+fi
+
 mkdir -p logs reports docs data/state
 LOG_FILE="$ROOT/logs/daily-update.log"
 exec >>"$LOG_FILE" 2>&1
@@ -33,14 +46,14 @@ tmp_breadth="$tmp_dir/breadth_history.json"
 tmp_report="$tmp_dir/latest.json"
 tmp_html="$tmp_dir/index.html"
 
-python3 -m rollingold.breadth --output "$tmp_breadth"
-python3 -m rollingold.site --mode data --breadth-input "$tmp_breadth" --output "$tmp_report"
-python3 -m rollingold.site --data "$tmp_report" --output "$tmp_html"
+"$PYTHON_BIN" -m rollingold.breadth --output "$tmp_breadth" --fallback data/state/breadth_history.json
+"$PYTHON_BIN" -m rollingold.site --mode data --refresh-cache --breadth-input "$tmp_breadth" --output "$tmp_report"
+"$PYTHON_BIN" -m rollingold.site --data "$tmp_report" --output "$tmp_html"
 
-new_date="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["meta"]["latest_date"])' "$tmp_report")"
+new_date="$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["meta"]["latest_date"])' "$tmp_report")"
 old_date=""
 if [ -f reports/latest.json ]; then
-  old_date="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["meta"].get("latest_date",""))' reports/latest.json 2>/dev/null || true)"
+  old_date="$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["meta"].get("latest_date",""))' reports/latest.json 2>/dev/null || true)"
 fi
 
 if [ "$new_date" = "$old_date" ] && [ -f docs/index.html ]; then
@@ -67,4 +80,3 @@ else
 fi
 
 echo "daily update complete for $new_date"
-

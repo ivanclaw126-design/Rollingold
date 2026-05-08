@@ -104,11 +104,92 @@ def render_html(report: dict[str, Any]) -> str:
       display: grid;
       gap: 18px;
     }}
+    .insight-grid {{
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }}
+    .insight-card {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfa;
+      min-width: 0;
+    }}
+    .insight-card strong {{
+      display: block;
+      font-size: 28px;
+      line-height: 1.1;
+      margin-bottom: 4px;
+      font-variant-numeric: tabular-nums;
+    }}
+    .insight-card span {{
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }}
+    .signal-grid {{
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }}
+    .signal-card {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      min-width: 0;
+      background: #fff;
+    }}
+    .signal-title {{
+      padding: 9px 10px;
+      font-weight: 760;
+      font-size: 13px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }}
+    .signal-title.good {{ background: #e8f5ed; color: var(--green); }}
+    .signal-title.watch {{ background: #eef4fb; color: var(--blue); }}
+    .signal-title.warn {{ background: #fbf1df; color: #8b5a12; }}
+    .signal-title.bad {{ background: #fbebe8; color: var(--red); }}
+    .signal-rule {{
+      padding: 8px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfa;
+    }}
+    .signal-item {{
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      cursor: pointer;
+      min-width: 0;
+    }}
+    .signal-item:last-child {{ border-bottom: 0; }}
+    .signal-item:hover {{ background: #f8faf7; }}
+    .signal-item span:first-child {{
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-weight: 680;
+    }}
+    .signal-item span:last-child {{
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }}
     section {{
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 16px;
+      min-width: 0;
     }}
     .section-head {{
       display: flex;
@@ -126,6 +207,27 @@ def render_html(report: dict[str, Any]) -> str:
       margin: 0;
       color: var(--muted);
       font-size: 12px;
+    }}
+    .method-note {{
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }}
+    .chart-meta {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }}
+    .chart-meta span {{
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: #fbfcfa;
+      white-space: nowrap;
     }}
     .grid {{
       display: grid;
@@ -192,13 +294,14 @@ def render_html(report: dict[str, Any]) -> str:
     }}
     .rankings {{
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 12px;
     }}
     .rank-list {{
       border: 1px solid var(--line);
       border-radius: 8px;
       overflow: hidden;
+      min-width: 0;
     }}
     .rank-title {{
       background: var(--panel);
@@ -214,6 +317,11 @@ def render_html(report: dict[str, Any]) -> str:
       border-top: 1px solid var(--line);
       font-size: 13px;
       cursor: pointer;
+      min-width: 0;
+    }}
+    .rank-item span {{
+      min-width: 0;
+      overflow-wrap: anywhere;
     }}
     .rank-item:hover {{
       background: #f8faf7;
@@ -227,10 +335,29 @@ def render_html(report: dict[str, Any]) -> str:
       border: 1px solid var(--line);
       border-radius: 8px;
     }}
+    .heatmap-actions {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }}
+    .text-button {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfa;
+      color: var(--ink);
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }}
+    .text-button:hover {{
+      background: var(--panel);
+    }}
     table {{
-      width: 100%;
+      width: max-content;
+      min-width: max(100%, 940px);
       border-collapse: collapse;
-      min-width: 940px;
       font-size: 12px;
     }}
     th, td {{
@@ -248,6 +375,22 @@ def render_html(report: dict[str, Any]) -> str:
       text-align: left;
       font-weight: 700;
     }}
+    .heatmap-status {{
+      font-weight: 720;
+      color: var(--muted);
+    }}
+    .trend-cell {{
+      width: 112px;
+      min-width: 112px;
+    }}
+    .heatmap-delta.positive {{ color: var(--green); font-weight: 760; }}
+    .heatmap-delta.negative {{ color: var(--red); font-weight: 760; }}
+    .sparkline {{
+      width: 96px;
+      height: 24px;
+      display: block;
+      margin: 0 auto;
+    }}
     footer {{
       color: var(--muted);
       font-size: 12px;
@@ -255,15 +398,29 @@ def render_html(report: dict[str, Any]) -> str:
       padding: 4px 2px 0;
     }}
     .dot-label {{
-      font-size: 11px;
+      font-size: 12px;
       dominant-baseline: middle;
       pointer-events: none;
+      paint-order: stroke;
+      stroke: #fbfcfa;
+      stroke-width: 4px;
+      stroke-linejoin: round;
+    }}
+    .dot-label.selected {{
+      font-size: 15px;
+      font-weight: 800;
+    }}
+    .axis-label {{
+      font-size: 12px;
+      fill: #66716d;
     }}
     @media (max-width: 900px) {{
       header {{ padding: 18px 14px; }}
       .topbar {{ grid-template-columns: 1fr; }}
       main {{ padding: 14px; }}
       .grid {{ grid-template-columns: 1fr; }}
+      .insight-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+      .signal-grid {{ grid-template-columns: 1fr; }}
       .rankings {{ grid-template-columns: 1fr; }}
       h1 {{ font-size: 24px; }}
       .section-head {{ align-items: flex-start; flex-direction: column; }}
@@ -290,11 +447,24 @@ def render_html(report: dict[str, Any]) -> str:
     </div>
   </header>
   <main>
+    <section>
+      <div class="section-head">
+        <h2>行业轮动判断</h2>
+        <p class="hint">先看价格强弱，再用宽度扩散验证趋势质量。</p>
+      </div>
+      <div class="insight-grid" id="market-insights"></div>
+      <div class="signal-grid" id="signal-groups"></div>
+      <p class="method-note">口径：价格相对轮动使用行业相对申万 A 指的强弱 z-score 和动量 z-score；MA20 宽度为行业内成分站上 20 日均线比例，1 日 / 5 日变化均为百分点变化。</p>
+    </section>
+
     <div class="grid">
       <section>
         <div class="section-head">
           <h2>价格相对轮动图</h2>
-          <p class="hint">横轴相对强弱，纵轴相对动量；点击行业查看详情。</p>
+          <div class="chart-meta">
+            <span id="history-label">最近 60 个交易日</span>
+            <span>横轴相对强弱，纵轴相对动量</span>
+          </div>
         </div>
         <svg id="rotation-svg" viewBox="0 0 720 420" role="img" aria-label="行业四象限轮动图"></svg>
       </section>
@@ -307,12 +477,16 @@ def render_html(report: dict[str, Any]) -> str:
         <p class="hint">评分由价格、动量、宽度、宽度改善和成交确认合成，范围 0-100。</p>
       </div>
       <div class="rankings" id="rankings"></div>
+      <p class="method-note">评分口径：价格相对强弱 30%，相对动量 25%，MA20 宽度 20%，5 日宽度改善 15%，成交额占比是否高于 20 日均值 10%。分组口径：当前强势取综合评分前列，边际改善 / 恶化按 5 日宽度变化排序，弱势修复偏向走强象限，走弱预警偏向走弱象限或强势放缓。</p>
     </section>
 
     <section>
       <div class="section-head">
         <h2>市场宽度热力图</h2>
-        <p class="hint">最近约 30 个交易日 MA20 站上率，0 值按无数据过滤后聚合。</p>
+        <div class="heatmap-actions">
+          <p class="hint" id="heatmap-hint">默认展示最近 10 个交易日，按当前 MA20 宽度排序；趋势列为同一窗口首尾变化，绿色上升、红色下降。</p>
+          <button class="text-button" id="heatmap-toggle" type="button">显示全部时间</button>
+        </div>
       </div>
       <div class="heatmap-wrap" id="heatmap"></div>
     </section>
@@ -325,6 +499,7 @@ def render_html(report: dict[str, Any]) -> str:
     const DATA = {data_json};
     let mode = 'daily';
     let selected = DATA.industries[0]?.name;
+    let heatmapExpanded = false;
 
     const colorMap = {{
       '领涨': '#16885d',
@@ -350,32 +525,71 @@ def render_html(report: dict[str, Any]) -> str:
       }};
     }}
 
-    function scaleX(x) {{ return 360 + Math.max(-3, Math.min(3, x)) * 92; }}
-    function scaleY(y) {{ return 210 - Math.max(-3, Math.min(3, y)) * 58; }}
+    function clamp(value, low, high) {{ return Math.max(low, Math.min(high, value)); }}
+    function currentPoints() {{
+      return DATA.industries.map(item => ({{ item, point: activePoint(item) }}));
+    }}
+    function chartLimit(points, selectedPoint) {{
+      const values = [];
+      points.forEach(entry => values.push(Math.abs(entry.point.x), Math.abs(entry.point.y)));
+      (selectedPoint.path || []).forEach(point => values.push(Math.abs(point.x), Math.abs(point.y)));
+      const raw = Math.max(1.2, ...values.filter(Number.isFinite));
+      return Math.min(3.4, Math.ceil((raw + 0.25) * 10) / 10);
+    }}
+    function scaleX(x, limit) {{ return 360 + clamp(x, -limit, limit) * (292 / limit); }}
+    function scaleY(y, limit) {{ return 210 - clamp(y, -limit, limit) * (152 / limit); }}
 
     function renderRotation() {{
       const svg = document.getElementById('rotation-svg');
       const selectedItem = DATA.industries.find(item => item.name === selected) || DATA.industries[0];
       const selectedPoint = activePoint(selectedItem);
+      const points = currentPoints();
+      const limit = chartLimit(points, selectedPoint);
+      const ticks = [-limit, -limit / 2, 0, limit / 2, limit];
       const labels = [
-        ['走强', 120, 64], ['领涨', 585, 64], ['领跌', 120, 360], ['走弱', 585, 360]
+        ['走强', 214, 134], ['领涨', 506, 134], ['领跌', 214, 286], ['走弱', 506, 286]
       ];
-      const path = (selectedPoint.path || []).map(p => `${{scaleX(p.x)}},${{scaleY(p.y)}}`).join(' ');
+      const pathPoints = selectedPoint.path || [];
+      const path = pathPoints.map(p => `${{scaleX(p.x, limit)}},${{scaleY(p.y, limit)}}`).join(' ');
+      const leadingPaths = points
+        .filter(({{ item, point }}) => item.name !== selected && point.quadrant === '领涨')
+        .map(({{ item }}) => activePoint(item).path || [])
+        .filter(points => points.length > 1)
+        .map(points => points.map(p => `${{scaleX(p.x, limit)}},${{scaleY(p.y, limit)}}`).join(' '));
+      const startPoint = pathPoints[0];
+      const endPoint = pathPoints[pathPoints.length - 1];
       svg.innerHTML = `
         <rect x="0" y="0" width="720" height="420" fill="#fbfcfa"></rect>
-        <line x1="360" y1="28" x2="360" y2="392" stroke="#b8c3bb" stroke-width="1"></line>
-        <line x1="36" y1="210" x2="684" y2="210" stroke="#b8c3bb" stroke-width="1"></line>
-        <text x="666" y="232" fill="#66716d" font-size="12">相对强弱</text>
-        <text x="374" y="42" fill="#66716d" font-size="12">相对动量</text>
-        ${{labels.map(([text,x,y]) => `<text x="${{x}}" y="${{y}}" fill="#66716d" font-size="18" font-weight="700">${{text}}</text>`).join('')}}
-        ${{path ? `<polyline points="${{path}}" fill="none" stroke="#17201c" stroke-width="2" opacity=".55"></polyline>` : ''}}
-        ${{DATA.industries.map(item => {{
-          const point = activePoint(item);
+        <rect x="68" y="58" width="292" height="152" fill="#f2f7f3" opacity=".72"></rect>
+        <rect x="360" y="58" width="292" height="152" fill="#eef6f1" opacity=".85"></rect>
+        <rect x="68" y="210" width="292" height="152" fill="#fbf1ef" opacity=".65"></rect>
+        <rect x="360" y="210" width="292" height="152" fill="#fbf5e9" opacity=".70"></rect>
+        ${{ticks.map(tick => `
+          <line x1="${{scaleX(tick, limit)}}" y1="58" x2="${{scaleX(tick, limit)}}" y2="362" stroke="#d8e0da" stroke-width="${{tick === 0 ? 1.8 : 1}}"></line>
+          <line x1="68" y1="${{scaleY(tick, limit)}}" x2="652" y2="${{scaleY(tick, limit)}}" stroke="#d8e0da" stroke-width="${{tick === 0 ? 1.8 : 1}}"></line>
+          <text class="axis-label" x="${{scaleX(tick, limit)}}" y="382" text-anchor="middle">${{tick.toFixed(1)}}</text>
+          <text class="axis-label" x="50" y="${{scaleY(tick, limit) + 4}}" text-anchor="end">${{tick.toFixed(1)}}</text>
+        `).join('')}}
+        <text class="axis-label" x="608" y="402">相对强弱</text>
+        <text class="axis-label" x="76" y="42">相对动量</text>
+        ${{labels.map(([text,x,y]) => `<text x="${{x}}" y="${{y}}" fill="#66716d" font-size="34" font-weight="850" opacity=".48" text-anchor="middle" dominant-baseline="middle">${{text}}</text>`).join('')}}
+        ${{leadingPaths.map(points => `<polyline points="${{points}}" fill="none" stroke="#9bd8b7" stroke-width="2" opacity=".36" stroke-linecap="round" stroke-linejoin="round"></polyline>`).join('')}}
+        ${{path ? `<polyline points="${{path}}" fill="none" stroke="#17201c" stroke-width="3" opacity=".62" stroke-linecap="round" stroke-linejoin="round"></polyline>` : ''}}
+        ${{pathPoints.map((point, index) => index % 6 === 0 ? `<circle cx="${{scaleX(point.x, limit)}}" cy="${{scaleY(point.y, limit)}}" r="2.4" fill="#17201c" opacity=".26"></circle>` : '').join('')}}
+        ${{startPoint ? `<circle cx="${{scaleX(startPoint.x, limit)}}" cy="${{scaleY(startPoint.y, limit)}}" r="4" fill="#fff" stroke="#17201c" stroke-width="1.6"></circle>` : ''}}
+        ${{endPoint ? `<circle cx="${{scaleX(endPoint.x, limit)}}" cy="${{scaleY(endPoint.y, limit)}}" r="7.5" fill="none" stroke="#17201c" stroke-width="2"></circle>` : ''}}
+        ${{points.map(({{ item, point }}) => {{
           const color = colorMap[point.quadrant] || '#66716d';
-          const radius = item.name === selected ? 7 : 4.5;
+          const isSelected = item.name === selected;
+          const radius = isSelected ? 8 : 5;
+          const x = scaleX(point.x, limit);
+          const y = scaleY(point.y, limit);
+          const labelX = clamp(x + 10, 78, 638);
+          const labelY = clamp(y + 4, 66, 354);
           return `<g class="industry-dot" data-name="${{item.name}}" style="cursor:pointer">
-            <circle cx="${{scaleX(point.x)}}" cy="${{scaleY(point.y)}}" r="${{radius}}" fill="${{color}}" stroke="#fff" stroke-width="1.5"></circle>
-            <text class="dot-label" x="${{scaleX(point.x) + 8}}" y="${{scaleY(point.y)}}" fill="#17201c">${{item.name}}</text>
+            <title>${{item.name}}｜${{point.quadrant}}｜强弱 ${{fmt(point.x)}}｜动量 ${{fmt(point.y)}}｜评分 ${{fmt(item.score)}}</title>
+            <circle cx="${{x}}" cy="${{y}}" r="${{radius}}" fill="${{color}}" stroke="#fff" stroke-width="${{isSelected ? 2.4 : 1.5}}"></circle>
+            <text class="dot-label ${{isSelected ? 'selected' : ''}}" x="${{labelX}}" y="${{labelY}}" fill="#17201c">${{item.name}}</text>
           </g>`;
         }}).join('')}}
       `;
@@ -435,21 +649,141 @@ def render_html(report: dict[str, Any]) -> str:
       }});
     }}
 
+    function signalBuckets() {{
+      const items = DATA.industries.map(item => {{
+        const point = activePoint(item);
+        return {{ ...item, activeQuadrant: point.quadrant, activeX: point.x, activeY: point.y }};
+      }});
+      const strong = items
+        .filter(item => item.activeQuadrant === '领涨' && item.breadth_ma20 >= 65 && item.breadth_delta_5d >= 0)
+        .sort((a, b) => b.score - a.score);
+      const early = items
+        .filter(item => item.breadth_delta_5d >= 8 && (item.activeQuadrant === '走强' || item.activeQuadrant === '领跌'))
+        .sort((a, b) => (b.breadth_delta_5d || 0) - (a.breadth_delta_5d || 0));
+      const cooling = items
+        .filter(item => item.breadth_ma20 >= 60 && (item.breadth_delta_5d || 0) < 0)
+        .sort((a, b) => (a.breadth_delta_5d || 0) - (b.breadth_delta_5d || 0));
+      const weak = items
+        .filter(item => item.breadth_ma20 < 45 && item.activeQuadrant === '领跌')
+        .sort((a, b) => a.score - b.score);
+      return {{ strong, early, cooling, weak, items }};
+    }}
+
+    function renderMarketInsights() {{
+      const buckets = signalBuckets();
+      const breadthValues = buckets.items.map(item => item.breadth_ma20).filter(Number.isFinite);
+      const avg = DATA.breadth.latest_market_average ?? (
+        breadthValues.length ? breadthValues.reduce((sum, value) => sum + value, 0) / breadthValues.length : null
+      );
+      const above70 = buckets.items.filter(item => item.breadth_ma20 >= 70).length;
+      const below30 = buckets.items.filter(item => item.breadth_ma20 < 30).length;
+      const improving = buckets.items.filter(item => (item.breadth_delta_1d || 0) > 0).length;
+      const worsening = buckets.items.filter(item => (item.breadth_delta_1d || 0) < 0).length;
+      document.getElementById('market-insights').innerHTML = [
+        [fmt(avg) + '%', '全行业平均 MA20 宽度'],
+        [above70, '宽度超过 70% 的行业数'],
+        [below30, '宽度低于 30% 的行业数'],
+        [`${{improving}} / ${{worsening}}`, '今日改善 / 走弱行业数']
+      ].map(([value, label]) => `
+        <div class="insight-card"><strong>${{value}}</strong><span>${{label}}</span></div>
+      `).join('');
+    }}
+
+    function renderSignalGroups() {{
+      const buckets = signalBuckets();
+      const groups = [
+        ['强势扩散', 'good', '领涨象限，MA20 宽度不低于 65%，且 5 日宽度未回落。', buckets.strong, item => `${{fmt(item.breadth_ma20)}}% / ${{signed(item.breadth_delta_5d)}}`],
+        ['潜在启动', 'watch', '5 日宽度改善不低于 8 个百分点，且价格仍在走强或领跌修复阶段。', buckets.early, item => `${{item.activeQuadrant}} / ${{signed(item.breadth_delta_5d)}}`],
+        ['高位退潮', 'warn', 'MA20 宽度不低于 60%，但 5 日宽度已经转为回落。', buckets.cooling, item => `${{fmt(item.breadth_ma20)}}% / ${{signed(item.breadth_delta_5d)}}`],
+        ['弱势回避', 'bad', 'MA20 宽度低于 45%，且价格相对轮动仍在领跌象限。', buckets.weak, item => `${{fmt(item.score)}}分`]
+      ];
+      document.getElementById('signal-groups').innerHTML = groups.map(([title, tone, rule, items, meta]) => `
+        <div class="signal-card">
+          <div class="signal-title ${{tone}}">${{title}}</div>
+          <div class="signal-rule">${{rule}}</div>
+          ${{items.slice(0, 5).map(item => `
+            <div class="signal-item" data-name="${{item.name}}">
+              <span>${{item.name}}</span><span>${{meta(item)}}</span>
+            </div>
+          `).join('') || '<div class="signal-item"><span>暂无</span><span></span></div>'}}
+        </div>
+      `).join('');
+      document.querySelectorAll('.signal-item[data-name]').forEach(node => {{
+        node.addEventListener('click', () => {{
+          selected = node.dataset.name;
+          renderAll();
+        }});
+      }});
+    }}
+
     function renderHeatmap() {{
-      const dates = DATA.breadth.dates.slice(-30);
+      const windowSize = heatmapExpanded ? DATA.breadth.dates.length : Math.min(10, DATA.breadth.dates.length);
+      const dates = DATA.breadth.dates.slice(-windowSize);
       const offset = DATA.breadth.dates.length - dates.length;
-      const order = DATA.industries.slice().sort((a, b) => b.score - a.score).map(item => item.name);
+      const order = DATA.industries.slice()
+        .sort((a, b) => (b.breadth_ma20 ?? -1) - (a.breadth_ma20 ?? -1))
+        .map(item => item.name);
       const indexByName = new Map(DATA.breadth.industries.map((name, index) => [name, index]));
-      const header = `<tr><th>行业</th>${{dates.map(date => `<th>${{date.slice(5)}}</th>`).join('')}}</tr>`;
+      const trendLabel = heatmapExpanded ? `趋势(全部${{dates.length}}日)` : `趋势(近${{dates.length}}日)`;
+      const header = `<tr><th>行业</th><th>状态</th><th>当前</th><th>1日</th><th>5日</th><th class="trend-cell">${{trendLabel}}</th>${{dates.map(date => `<th>${{date.slice(5)}}</th>`).join('')}}</tr>`;
       const rows = order.map(name => {{
+        const item = DATA.industries.find(entry => entry.name === name) || {{}};
         const row = DATA.breadth.values[indexByName.get(name)] || [];
+        const recent = row.slice(offset);
         const cells = dates.map((_, idx) => {{
           const value = row[offset + idx];
           return `<td style="background:${{heatColor(value)}}">${{value == null ? '-' : value.toFixed(1)}}</td>`;
         }}).join('');
-        return `<tr><td>${{name}}</td>${{cells}}</tr>`;
+        return `<tr>
+          <td>${{name}}</td>
+          <td class="heatmap-status">${{breadthState(item)}}</td>
+          <td><strong>${{fmt(item.breadth_ma20)}}%</strong></td>
+          <td class="heatmap-delta ${{deltaClass(item.breadth_delta_1d)}}">${{signed(item.breadth_delta_1d)}}</td>
+          <td class="heatmap-delta ${{deltaClass(item.breadth_delta_5d)}}">${{signed(item.breadth_delta_5d)}}</td>
+          <td class="trend-cell">${{sparkline(recent)}}</td>
+          ${{cells}}
+        </tr>`;
       }}).join('');
       document.getElementById('heatmap').innerHTML = `<table>${{header}}${{rows}}</table>`;
+      document.getElementById('heatmap-toggle').textContent = heatmapExpanded ? '收起到近 10 日' : '显示全部时间';
+      document.getElementById('heatmap-hint').textContent = heatmapExpanded
+        ? `已展示全部 ${{dates.length}} 个交易日，趋势列为全部窗口首尾变化；绿色上升、红色下降、灰色持平。`
+        : `默认展示最近 ${{dates.length}} 个交易日，按当前 MA20 宽度排序；趋势列为近 ${{dates.length}} 日首尾变化，绿色上升、红色下降、灰色持平。`;
+    }}
+
+    function breadthState(item) {{
+      const breadth = item.breadth_ma20;
+      const delta = item.breadth_delta_5d || 0;
+      if (breadth >= 70 && delta >= 0) return '扩散';
+      if (breadth >= 60 && delta < 0) return '退潮';
+      if (breadth < 50 && delta >= 6) return '修复';
+      if (breadth < 45 && delta < 0) return '弱势';
+      return '震荡';
+    }}
+
+    function deltaClass(value) {{
+      if (value > 0) return 'positive';
+      if (value < 0) return 'negative';
+      return '';
+    }}
+
+    function sparkline(values) {{
+      const valid = values.filter(Number.isFinite);
+      if (!valid.length) return '';
+      const min = Math.min(...valid);
+      const max = Math.max(...valid);
+      const span = Math.max(1, max - min);
+      const points = values.map((value, index) => {{
+        const x = 4 + index * (88 / Math.max(1, values.length - 1));
+        const y = 20 - ((Number.isFinite(value) ? value : min) - min) * (16 / span);
+        return `${{x.toFixed(1)}},${{y.toFixed(1)}}`;
+      }}).join(' ');
+      const last = values[values.length - 1];
+      const first = values[0];
+      const stroke = Math.abs(last - first) < 0.05 ? '#8b9691' : (last > first ? '#16885d' : '#c74d42');
+      return `<svg class="sparkline" viewBox="0 0 96 24" aria-hidden="true">
+        <polyline points="${{points}}" fill="none" stroke="${{stroke}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      </svg>`;
     }}
 
     function heatColor(value) {{
@@ -470,6 +804,9 @@ def render_html(report: dict[str, Any]) -> str:
     function renderAll() {{
       document.getElementById('mode-daily').classList.toggle('active', mode === 'daily');
       document.getElementById('mode-weekly').classList.toggle('active', mode === 'weekly');
+      document.getElementById('history-label').textContent = mode === 'weekly' ? '最近 52 周' : '最近 60 个交易日';
+      renderMarketInsights();
+      renderSignalGroups();
       renderRotation();
       renderDetail();
       renderRankings();
@@ -477,6 +814,7 @@ def render_html(report: dict[str, Any]) -> str:
     }}
     document.getElementById('mode-daily').addEventListener('click', () => {{ mode = 'daily'; renderAll(); }});
     document.getElementById('mode-weekly').addEventListener('click', () => {{ mode = 'weekly'; renderAll(); }});
+    document.getElementById('heatmap-toggle').addEventListener('click', () => {{ heatmapExpanded = !heatmapExpanded; renderHeatmap(); }});
     renderAll();
   </script>
 </body>
